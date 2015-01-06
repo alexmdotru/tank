@@ -13,8 +13,7 @@ SDL_Color COLOR_GREEN = {   0, 255,   0 };
 SDL_Color COLOR_BLUE  = {   0,   0, 255 };
 SDL_Color COLOR_WHITE = { 255, 255, 255 };
 
-SDL_Texture *loadTextureFromText(const char *text, int size,
-                                  SDL_Color color, SDL_Renderer *renderer) {
+SDL_Texture *loadTextureFromText(const char *text, int size, SDL_Color color, SDL_Renderer *renderer) {
   TTF_Font *font = NULL;
   SDL_Surface *surface = NULL;
   SDL_Texture *texture = NULL;
@@ -59,9 +58,7 @@ SDL_Texture *loadTextureFromPNG(char *file, SDL_Renderer *renderer) {
 
 void loadTextures(client_t *client) {
   // Load logo texture
-  client->logo = loadTextureFromText(LOGO_TEXT, LOGO_SIZE,
-                                      COLOR_RED, client->renderer);
+  client->logo = loadTextureFromText(LOGO_TEXT, LOGO_SIZE, COLOR_RED, client->renderer);
   // Load textures
-  client->textures = loadTextureFromPNG("../../resources/textures.png",
-                                        client->renderer);
+  client->textures = loadTextureFromPNG("../../resources/textures.png", client->renderer);
 }
