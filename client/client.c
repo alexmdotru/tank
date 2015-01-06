@@ -1,27 +1,29 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "SDL2/SDL.h"
-#include "SDL2_net/SDL_net.h"
+#include "client.h"
+#include "framework.h"
 
 int main(int argc, char **argv) {
+  client_t client;
+
   // Check command line
   if(argc != 3) {
     fprintf(stderr, "usage:\t%s host port", argv[0]);
     exit(1);
   }
 
-  // Init framework
-  if(!SDL_Init(SDL_INIT_EVERYTHING)) {
-    fprintf(stderr, "SDL_Init Error: %s\n", SDL_GetError());
-    exit(2);
-  }
+  initFramework();
+  launchGame(client);
 
-  if(!SDLNet_Init()) {
-    fprintf(stderr, "SDLNet_Init Error: %s\n", SDLNet_GetError());
-    exit(3);
-  }
-
+  SDL_Delay(10000);
   SDLNet_Quit();
   SDL_Quit();
   return 0;
+}
+
+void launchGame(client_t client) {
+  client.window = SDL_CreateWindow("TAHK-2015", SDL_WINDOWPOS_CENTERED,
+    SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
+  client.renderer = SDL_CreateRenderer(client.window, -1,
+    SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 }
