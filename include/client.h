@@ -2,12 +2,16 @@
 
 #include "framework.h"
 
-const int WINDOW_WIDTH = 512;
-const int WINDOW_HEIGHT = 480;
+#define WINDOW_WIDTH  512
+#define WINDOW_HEIGHT 480
 
 typedef struct {
   SDL_Window *window;
   SDL_Renderer *renderer;
+  TCPsocket socket;
+  // Textures
+  SDL_Texture *logo;
+  SDL_Texture *textures;
+  int isPlaying;
+  int isInMainMenu;
 } client_t;
-
-void launchGame(client_t client);
