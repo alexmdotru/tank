@@ -3,8 +3,11 @@
 #include "framework.h"
 #include "client.h"
 #include "graphics.h"
+#include "network.h"
 
-void loadGame(client_t *client);
+void gameLoop(client_t *client);
+void updateMenu(client_t *client);
+void update(client_t *client);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -13,25 +16,59 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+  // Init SDL2 frameworks
   initFramework();
-  client_t client;
-  loadGame(&client);
 
-  SDL_Delay(10000);
+  client_t client;
+
+  // Set server host and port
+  client.shost = argv[1];
+  client.sport = atoi(argv[2]);
+
+  // Prepare renderer
+  loadFrame(&client);
+
+  // Load labels and textures
+  loadResources(&client);
+
+  // Start game
+  gameLoop(&client);
+
+  // Quit SDL2 frameworks
   quitFramework();
   return 0;
 }
 
-void loadGame(client_t *client) {
-  // Prepare renderer
-  client->window = SDL_CreateWindow("TAHK-2015", SDL_WINDOWPOS_CENTERED,
-    SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
-  client->renderer = SDL_CreateRenderer(client->window, -1,
-    SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
-  loadTextures(client);
-
-  // Set client flags
-  client->isPlaying = 0;
+void gameLoop(client_t *client) {
+  client->gameRunning = 1;
   client->isInMainMenu = 1;
+
+  SDL_Thread *cToServer;
+  cToServer = SDL_CreateThread(connectToServer, "cToServer", (void*)client);
+
+  while(client->gameRunning) {
+    if(client->isPlaying) {
+      update(client);
+      render(client);
+    }
+    else if(client->isInMainMenu) {
+      updateMenu(client);
+      renderMenu(client);
+    }
+  }
+}
+
+void updateMenu(client_t *client) {
+  SDL_Event event;
+
+  while(SDL_PollEvent(&event)) {
+    switch(event.type) {
+      case SDL_QUIT:
+      client->gameRunning = 0; break;
+    }
+  }
+}
+
+void update(client_t *client) {
+
 }
