@@ -29,8 +29,13 @@ typedef struct {
   texture_t *lcout;
   texture_t *lw2nd;
   texture_t *lcned;
+  // Water
+  texture_t *water[3];
+  int waterAnim;
+  SDL_Surface *textures;
   int gameRunning;
   int isPlaying;
   int isInMainMenu;
   Uint8 id;
+  int level;
 } client_t;
