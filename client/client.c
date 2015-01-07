@@ -8,6 +8,7 @@
 void gameLoop(client_t *client);
 void updateMenu(client_t *client);
 void update(client_t *client);
+int connectToServer(void *data);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -42,6 +43,7 @@ int main(int argc, char **argv) {
 void gameLoop(client_t *client) {
   client->gameRunning = 1;
   client->isInMainMenu = 1;
+  client->waterAnim = 0;
 
   SDL_Thread *cToServer;
   cToServer = SDL_CreateThread(connectToServer, "cToServer", (void*)client);
@@ -70,5 +72,48 @@ void updateMenu(client_t *client) {
 }
 
 void update(client_t *client) {
+  SDL_Event event;
 
+  while(SDL_PollEvent(&event)) {
+    switch(event.type) {
+      case SDL_QUIT:
+      client->gameRunning = 0; break;
+    }
+  }
+}
+
+int connectToServer(void *data) {
+  client_t *client = (client_t*)data;
+
+  // Set connection status
+  client->cstatus = CONNECTING;
+
+  // Connection timeout
+  Uint32 timeout = SDL_GetTicks() + 30000;
+  fprintf(stderr, "Connecting to %s:%d\n", client->shost, client->sport);
+
+  while(SDL_GetTicks() < timeout) {
+    // Open socket
+    client->socket = openTCPSocket(client->shost, client->sport);
+
+    if(client->socket) {
+      SDLNet_TCP_Recv(client->socket, &client->id, 1);
+      fprintf(stderr, "Connection successful! Player id %d.\n", client->id);
+      client->cstatus = WAITING2ND;
+      SDLNet_TCP_Recv(client->socket, &client->level, 4);
+      client->cstatus = CONNECTED;
+      SDL_Delay(3000);
+      client->isInMainMenu = 0;
+      client->isPlaying = 1;
+      break;
+    }
+  }
+
+  if(!client->socket) {
+    client->cstatus = CTIMEOUT;
+    fprintf(stderr, "Server didn't respond.\n");
+    return 1;
+  }
+
+  return 0;
 }
