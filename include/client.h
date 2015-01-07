@@ -28,7 +28,9 @@ typedef struct {
   texture_t *lcing;
   texture_t *lcout;
   texture_t *lw2nd;
+  texture_t *lcned;
   int gameRunning;
   int isPlaying;
   int isInMainMenu;
+  Uint8 id;
 } client_t;
