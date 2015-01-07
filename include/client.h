@@ -2,16 +2,33 @@
 
 #include "framework.h"
 
-#define WINDOW_WIDTH  512
-#define WINDOW_HEIGHT 480
+typedef struct {
+  SDL_Texture *tex;
+  int width;
+  int height;
+} texture_t;
+
+typedef enum {
+  CONNECTING,
+  CTIMEOUT,
+  WAITING2ND,
+  CONNECTED
+} cstatus_t;
 
 typedef struct {
   SDL_Window *window;
   SDL_Renderer *renderer;
+  char *shost;
+  int sport;
+  cstatus_t cstatus;
   TCPsocket socket;
   // Textures
-  SDL_Texture *logo;
-  SDL_Texture *textures;
+  texture_t *logo1;
+  texture_t *logo2;
+  texture_t *lcing;
+  texture_t *lcout;
+  texture_t *lw2nd;
+  int gameRunning;
   int isPlaying;
   int isInMainMenu;
 } client_t;
