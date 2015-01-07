@@ -29,6 +29,7 @@ void loadResources(client_t *client) {
   client->lcing = loadLabel("соединяю...", 16, COLOR_WHITE, client->renderer);
   client->lcout = loadLabel("нет ответа", 16, COLOR_WHITE, client->renderer);
   client->lw2nd = loadLabel("жду второго игрока...", 16, COLOR_WHITE, client->renderer);
+  client->lcned = loadLabel("игра начинается...", 16, COLOR_WHITE, client->renderer);
 }
 
 texture_t *loadLabel(char *text, int size, SDL_Color color, SDL_Renderer *renderer) {
@@ -74,6 +75,10 @@ void renderMenu(client_t *client) {
     renderTexture(client->lcing, 168, 256, 1, 1, client->renderer); break;
     case CTIMEOUT:
     renderTexture(client->lcout, 176, 256, 1, 1, client->renderer); break;
+    case WAITING2ND:
+    renderTexture(client->lw2nd,  88, 256, 1, 1, client->renderer); break;
+    case CONNECTED:
+    renderTexture(client->lcned, 112, 256, 1, 1, client->renderer); break;
   }
 
   // Update render
