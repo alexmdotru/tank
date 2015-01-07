@@ -32,7 +32,13 @@ int connectToServer(void *data) {
 
     if(client->socket) {
       client->cstatus = WAITING2ND;
-      fprintf(stderr, "Connection successful!\n");
+      SDLNet_TCP_Recv(client->socket, &client->id, 1);
+      fprintf(stderr, "Connection successful! Player id %d.\n", client->id);
+      SDLNet_TCP_Recv(client->socket, &client->id, 1);
+      client->cstatus = CONNECTED;
+      SDL_Delay(3000);
+      client->isInMainMenu = 0;
+      client->isPlaying = 1;
       break;
     }
 
