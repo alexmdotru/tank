@@ -60,6 +60,7 @@ void acceptConnections(server_t *server) {
     pSocket = SDLNet_TCP_Accept(server->socket);
     if(pSocket) {
       fprintf(stderr, "Accepted from player %d.\n", server->pCount);
+      SDLNet_TCP_Send(pSocket, &server->pCount, 1);
       server->pSocket[server->pCount] = pSocket;
       SDLNet_TCP_AddSocket(server->socketSet, pSocket);
       server->pCount++;
@@ -67,5 +68,11 @@ void acceptConnections(server_t *server) {
     else {
       SDL_Delay(3000);
     }
+  }
+
+  int i;
+  for(i = 0; i < 2; i++) {
+    SDLNet_TCP_Send(server->pSocket[i], &server->pCount, 1);
+    fprintf(stderr, "Starting game...");
   }
 }
