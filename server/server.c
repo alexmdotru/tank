@@ -4,13 +4,13 @@
 #include "network.h"
 #include "server.h"
 
-SDLNet_SocketSet createSocketSet(int size);
-void acceptConnections(server_t *server);
+void acceptConnection(server_t *server);
+void serverLoop(server_t *server);
 
 int main(int argc, char **argv) {
   // Check command line
-  if(argc != 2) {
-    fprintf(stderr, "usage:\t%s port\n", argv[0]);
+  if(argc != 3) {
+    fprintf(stderr, "usage:\t%s port level\n", argv[0]);
     exit(EXIT_FAILURE);
   }
 
@@ -22,57 +22,62 @@ int main(int argc, char **argv) {
   // Set server host and port
   server.shost = NULL;
   server.sport = atoi(argv[1]);
+  server.level = atoi(argv[2]);
 
-  // Wait for players to connect
-  acceptConnections(&server);
+  // Do the work
+  serverLoop(&server);
 
   // Quit SDL2 frameworks
   quitFramework();
   return 0;
 }
 
-SDLNet_SocketSet createSocketSet(int size) {
-  SDLNet_SocketSet socketSet;
+void acceptConnection(server_t *server) {
+  // Client socket
+  TCPsocket socket;
 
-  socketSet = SDLNet_AllocSocketSet(size);
-  if(!socketSet) {
-    fprintf(stderr, "SDLNet_AllocSocketSet Error: %s\n", SDLNet_GetError());
+  // Accept connection
+  socket = SDLNet_TCP_Accept(server->socket);
+
+  if(socket) {
+    SDLNet_TCP_Send(socket, &server->playerID, 1);
+    server->pSocket[server->playerID] = socket;
+    fprintf(stderr, "Accepted from player %d.\n", server->playerID++);
   }
 
-  return socketSet;
+  if(server->playerID > 1) {
+    // Send level info
+    SDLNet_TCP_Send(server->pSocket[0], &server->level, 4);
+    SDLNet_TCP_Send(server->pSocket[1], &server->level, 4);
+  }
 }
 
-void acceptConnections(server_t *server) {
-  // No players
-  server->pCount = 0;
+void serverLoop(server_t *server) {
+  // Server is running
+  server->serverRunning = 1;
 
-  // Allocate socket set
-  server->socketSet = createSocketSet(2);
+  // No players
+  server->playerID = 0;
 
   // Open server socket
   server->socket = openTCPSocket(server->shost, server->sport);
-
   fprintf(stderr, "Ready to accept connections!\n");
 
-  while(server->pCount < 2) {
-    TCPsocket pSocket;
+  while(server->serverRunning) {
+    SDL_Event event;
 
-    pSocket = SDLNet_TCP_Accept(server->socket);
-    if(pSocket) {
-      fprintf(stderr, "Accepted from player %d.\n", server->pCount);
-      SDLNet_TCP_Send(pSocket, &server->pCount, 1);
-      server->pSocket[server->pCount] = pSocket;
-      SDLNet_TCP_AddSocket(server->socketSet, pSocket);
-      server->pCount++;
+    while(SDL_PollEvent(&event)) {
+      switch(event.type) {
+        case SDL_QUIT:
+        server->serverRunning = 0; break;
+      }
+    }
+
+    if(server->playerID > 1) {
+
     }
     else {
-      SDL_Delay(3000);
+      acceptConnection(server);
     }
-  }
-
-  int i;
-  for(i = 0; i < 2; i++) {
-    SDLNet_TCP_Send(server->pSocket[i], &server->pCount, 1);
-    fprintf(stderr, "Starting game...");
   }
 }
