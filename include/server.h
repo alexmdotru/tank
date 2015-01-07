@@ -4,7 +4,7 @@
 
 typedef struct {
   SDLNet_SocketSet socketSet;
-  int pCount;
+  Uint8 pCount;
   TCPsocket socket;
   TCPsocket pSocket[2];
   char *shost;
