@@ -1,11 +1,42 @@
 #pragma once
 
-#include "client.h"
-
 #define WINDOW_WIDTH  512
 #define WINDOW_HEIGHT 480
 
-void loadFrame(client_t *client);
-void loadResources(client_t *client);
-void renderMenu(client_t *client);
-void render(client_t *client);
+typedef struct {
+  SDL_Texture *tex;
+  int width;
+  int height;
+} texture_t;
+
+typedef struct {
+  // Main frame
+  SDL_Window *window;
+  SDL_Renderer *renderer;
+
+  // Texture bank
+  SDL_Surface *textures;
+
+  // Labels
+  texture_t *logo1;
+  texture_t *logo2;
+  texture_t *lcing;
+  texture_t *lcout;
+  texture_t *lw2nd;
+  texture_t *lcned;
+
+  // Brick
+  texture_t *brick;
+
+  // Steel
+  texture_t *steel;
+
+  // Water
+  texture_t *water[3];
+  int waterAnim;
+} graphics_t;
+
+void loadFrame(graphics_t *graphics);
+void freeFrame(graphics_t *graphics);
+void loadResources(graphics_t *graphics);
+void freeResources(graphics_t *graphics);

@@ -1,12 +1,8 @@
 #pragma once
 
 #include "framework.h"
-
-typedef struct {
-  SDL_Texture *tex;
-  int width;
-  int height;
-} texture_t;
+#include "map.h"
+#include "graphics.h"
 
 typedef enum {
   CONNECTING,
@@ -16,26 +12,21 @@ typedef enum {
 } cstatus_t;
 
 typedef struct {
-  SDL_Window *window;
-  SDL_Renderer *renderer;
-  char *shost;
-  int sport;
-  cstatus_t cstatus;
+  // Server host and port
+  char *host;
+  int port;
+  // Server socket
   TCPsocket socket;
-  // Textures
-  texture_t *logo1;
-  texture_t *logo2;
-  texture_t *lcing;
-  texture_t *lcout;
-  texture_t *lw2nd;
-  texture_t *lcned;
-  // Water
-  texture_t *water[3];
-  int waterAnim;
-  SDL_Surface *textures;
+  // Client status variables
   int gameRunning;
-  int isPlaying;
   int isInMainMenu;
-  Uint8 id;
+  int isPlaying;
+  cstatus_t cstatus;
+  // Player ID
+  int playerID;
+  // Level map
   int level;
+  map_t *map;
+  // Graphics
+  graphics_t *graphics;
 } client_t;
