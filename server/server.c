@@ -19,9 +19,9 @@ int main(int argc, char **argv) {
 
   server_t server;
 
-  // Set server host and port
-  server.shost = NULL;
-  server.sport = atoi(argv[1]);
+  // Set server host, port and level
+  server.host  = NULL;
+  server.port  = atoi(argv[1]);
   server.level = atoi(argv[2]);
 
   // Do the work
@@ -34,21 +34,21 @@ int main(int argc, char **argv) {
 
 void acceptConnection(server_t *server) {
   // Client socket
-  TCPsocket socket;
+  TCPsocket cSocket;
 
   // Accept connection
-  socket = SDLNet_TCP_Accept(server->socket);
+  cSocket = SDLNet_TCP_Accept(server->sSocket);
 
-  if(socket) {
-    SDLNet_TCP_Send(socket, &server->playerID, 1);
-    server->pSocket[server->playerID] = socket;
-    fprintf(stderr, "Accepted from player %d.\n", server->playerID++);
+  if(cSocket) {
+    SDLNet_TCP_Send(cSocket, &server->playerID, 4);
+    server->cSocket[server->playerID] = cSocket;
+    fprintf(stderr, "Accepted from player %d\n", server->playerID++);
   }
 
   if(server->playerID > 1) {
     // Send level info
-    SDLNet_TCP_Send(server->pSocket[0], &server->level, 4);
-    SDLNet_TCP_Send(server->pSocket[1], &server->level, 4);
+    SDLNet_TCP_Send(server->cSocket[0], &server->level, 4);
+    SDLNet_TCP_Send(server->cSocket[1], &server->level, 4);
   }
 }
 
@@ -60,7 +60,7 @@ void serverLoop(server_t *server) {
   server->playerID = 0;
 
   // Open server socket
-  server->socket = openTCPSocket(server->shost, server->sport);
+  server->sSocket = openTCPSocket(server->host, server->port);
   fprintf(stderr, "Ready to accept connections!\n");
 
   while(server->serverRunning) {
