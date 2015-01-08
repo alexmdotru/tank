@@ -25,12 +25,16 @@ graphics.o: client/graphics.c
 network.o: common/network.c
 	$(COMPILER) $(CFLAGS) $(FWORKS) $< -o $(OBJDIR)/$@
 
-client: framework.o client.o graphics.o network.o
+map.o: client/map.c
+	$(COMPILER) $(CFLAGS) $(FWORKS) $< -o $(OBJDIR)/$@
+
+client: framework.o client.o graphics.o network.o map.o
 	$(CC) $(FWORKS) $(LDFLAGS) \
 	$(OBJDIR)/framework.o \
 	$(OBJDIR)/client.o \
 	$(OBJDIR)/graphics.o \
 	$(OBJDIR)/network.o \
+	$(OBJDIR)/map.o \
 	-o $(EXEDIR)/$(CLIENT)
 
 server: server.o framework.o network.o
