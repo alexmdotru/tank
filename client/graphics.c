@@ -1,7 +1,9 @@
-#include "stdlib.h"
+#include <stdlib.h>
+#include <stdio.h>
 #include "framework.h"
 #include "client.h"
 #include "graphics.h"
+#include "map.h"
 
 // Colors
 SDL_Color SOLOR_BLACK = {   0,   0,   0 };
@@ -14,33 +16,67 @@ texture_t *loadLabel(char *text, int size, SDL_Color color, SDL_Renderer *render
 void renderTexture(texture_t *texture, int x, int y, int sx, int sy, SDL_Renderer *renderer);
 SDL_Surface *pngToSurface(char *file);
 texture_t *loadTexture(SDL_Surface *src, int x, int y, int szx, int szy, SDL_Renderer *renderer);
+int waterAnimThread(void *data);
 
-void loadFrame(client_t *client) {
-  client->window = SDL_CreateWindow("TAHK-2015", SDL_WINDOWPOS_CENTERED,
+void loadFrame(graphics_t *graphics) {
+  graphics->window = SDL_CreateWindow("TAHK-2015", SDL_WINDOWPOS_CENTERED,
     SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
 
-  client->renderer = SDL_CreateRenderer(client->window, -1,
+  graphics->renderer = SDL_CreateRenderer(graphics->window, -1,
     SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 }
 
-void loadResources(client_t *client) {
-  // Create and load labels
-  client->logo1 = loadLabel("TAHK", 64, COLOR_RED, client->renderer);
-  client->logo2 = loadLabel("2015", 64, COLOR_RED, client->renderer);
+void freeFrame(graphics_t *graphics) {
+  SDL_DestroyRenderer(graphics->renderer);
+  SDL_DestroyWindow(graphics->window);
+}
+
+void loadResources(graphics_t *graphics) {
+  // Logo labels
+  graphics->logo1 = loadLabel("TAHK", 64, COLOR_RED, graphics->renderer);
+  graphics->logo2 = loadLabel("2015", 64, COLOR_RED, graphics->renderer);
 
   // Connection labels
-  client->lcing = loadLabel("соединяю...", 16, COLOR_WHITE, client->renderer);
-  client->lcout = loadLabel("нет ответа", 16, COLOR_WHITE, client->renderer);
-  client->lw2nd = loadLabel("жду второго игрока...", 16, COLOR_WHITE, client->renderer);
-  client->lcned = loadLabel("игра начинается...", 16, COLOR_WHITE, client->renderer);
+  graphics->lcing = loadLabel("соединяю...", 16, COLOR_WHITE, graphics->renderer);
+  graphics->lcout = loadLabel("нет ответа", 16, COLOR_WHITE, graphics->renderer);
+  graphics->lw2nd = loadLabel("жду второго игрока...", 16, COLOR_WHITE, graphics->renderer);
+  graphics->lcned = loadLabel("игра начинается...", 16, COLOR_WHITE, graphics->renderer);
 
-  // Load textures.png into surface
-  client->textures = pngToSurface("../../resources/textures.png");
+  // Load textures bank
+  graphics->textures = pngToSurface("../../resources/textures.png");
+
+  // Load brick texture
+  graphics->brick = loadTexture(graphics->textures, 256, 64, 8, 8, graphics->renderer);
+
+  // Load steel texture
+  graphics->steel = loadTexture(graphics->textures, 256, 72, 8, 8, graphics->renderer);
 
   // Load water textures
-  client->water[0] = loadTexture(client->textures, 256, 80, 8, 8, client->renderer);
-  client->water[1] = loadTexture(client->textures, 264, 80, 8, 8, client->renderer);
-  client->water[2] = loadTexture(client->textures, 272, 80, 8, 8, client->renderer);
+  graphics->water[0] = loadTexture(graphics->textures, 256, 80, 8, 8, graphics->renderer);
+  graphics->water[1] = loadTexture(graphics->textures, 264, 80, 8, 8, graphics->renderer);
+  graphics->water[2] = loadTexture(graphics->textures, 272, 80, 8, 8, graphics->renderer);
+
+  // Animation threads
+  SDL_Thread *waterAnimT;
+  waterAnimT = SDL_CreateThread(waterAnimThread, "waterAnimT", (void*)graphics);
+}
+
+void freeResources(graphics_t *graphics) {
+  SDL_FreeSurface(graphics->textures);
+}
+
+int waterAnimThread(void *data) {
+  graphics_t *graphics = (graphics_t*)data;
+  graphics->waterAnim = 0;
+
+  while(1) {
+    if(++graphics->waterAnim == 3) {
+      graphics->waterAnim = 0;
+    }
+
+    // Animation speed
+    SDL_Delay(333);
+  }
 }
 
 SDL_Surface *pngToSurface(char *file) {
@@ -106,37 +142,75 @@ texture_t *loadLabel(char *text, int size, SDL_Color color, SDL_Renderer *render
 }
 
 void renderMenu(client_t *client) {
+  graphics_t *graphics = client->graphics;
+
   // Clear render
-  SDL_RenderClear(client->renderer);
+  SDL_RenderClear(graphics->renderer);
 
   // Render logo
-  renderTexture(client->logo1, 128, 64, 1, 1, client->renderer);
-  renderTexture(client->logo2, 128, 128, 1, 1, client->renderer);
+  renderTexture(graphics->logo1, 128, 64, 1, 1, graphics->renderer);
+  renderTexture(graphics->logo2, 128, 128, 1, 1, graphics->renderer);
 
   // Render connection status
   switch(client->cstatus) {
     case CONNECTING:
-    renderTexture(client->lcing, 168, 256, 1, 1, client->renderer); break;
+    renderTexture(graphics->lcing, 168, 256, 1, 1, graphics->renderer); break;
     case CTIMEOUT:
-    renderTexture(client->lcout, 176, 256, 1, 1, client->renderer); break;
+    renderTexture(graphics->lcout, 176, 256, 1, 1, graphics->renderer); break;
     case WAITING2ND:
-    renderTexture(client->lw2nd,  88, 256, 1, 1, client->renderer); break;
+    renderTexture(graphics->lw2nd,  88, 256, 1, 1, graphics->renderer); break;
     case CONNECTED:
-    renderTexture(client->lcned, 112, 256, 1, 1, client->renderer); break;
+    renderTexture(graphics->lcned, 112, 256, 1, 1, graphics->renderer); break;
   }
 
   // Update render
-  SDL_RenderPresent(client->renderer);
+  SDL_RenderPresent(graphics->renderer);
 }
 
 void render(client_t *client) {
-  // Clear render
-  SDL_RenderClear(client->renderer);
+  graphics_t *graphics = client->graphics;
 
-  renderTexture(client->water[0], 112, 256, 1, 1, client->renderer);
+  // Clear render
+  SDL_RenderClear(graphics->renderer);
+
+  // Fill background
+  SDL_Rect background = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+  SDL_SetRenderDrawColor(graphics->renderer, 128, 128, 128, SDL_ALPHA_OPAQUE);
+  SDL_RenderFillRect(graphics->renderer, &background);
+  SDL_SetRenderDrawColor(graphics->renderer,   0,   0,   0, SDL_ALPHA_OPAQUE);
+
+  // Render map
+  int i, j;
+  int x = 31, y = 31;
+  for(i = 0; i < MAP_SIZE; i++, y += 16, x = 31) {
+    for(j = 0; j < MAP_SIZE; j++, x += 16) {
+      SDL_Rect rect = { x, y, 16, 16 };
+
+      switch(client->map->block[i][j].material) {
+        case TERRA:
+        SDL_RenderFillRect(graphics->renderer, &rect);
+        break;
+
+        case BRICK:
+        renderTexture(graphics->brick, x, y, 2, 2, graphics->renderer);
+        break;
+
+        case STEEL:
+        renderTexture(graphics->steel, x, y, 2, 2, graphics->renderer);
+        break;
+
+        case GRASS:
+        break;
+
+        case WATER:
+        renderTexture(graphics->water[graphics->waterAnim], x, y, 2, 2, graphics->renderer);
+        break;
+      }
+    }
+  }
 
   // Update render
-  SDL_RenderPresent(client->renderer);
+  SDL_RenderPresent(graphics->renderer);
 }
 
 void renderTexture(texture_t *texture, int x, int y, int sx, int sy, SDL_Renderer *renderer) {
