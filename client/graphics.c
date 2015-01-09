@@ -13,10 +13,11 @@ SDL_Color COLOR_BLUE  = {   0,   0, 255 };
 SDL_Color COLOR_WHITE = { 255, 255, 255 };
 
 texture_t *loadLabel(char *text, int size, SDL_Color color, SDL_Renderer *renderer);
-void renderTexture(texture_t *texture, int x, int y, int sx, int sy, SDL_Renderer *renderer);
+void renderTexture(texture_t *texture, int x, int y, int sx, int sy, double rotation, SDL_Renderer *renderer);
 SDL_Surface *pngToSurface(char *file);
 texture_t *loadTexture(SDL_Surface *src, int x, int y, int szx, int szy, SDL_Renderer *renderer);
 int waterAnimThread(void *data);
+int tankAnimThread(void *data);
 
 void loadFrame(graphics_t *graphics) {
   graphics->window = SDL_CreateWindow("TAHK-2015", SDL_WINDOWPOS_CENTERED,
@@ -31,7 +32,9 @@ void freeFrame(graphics_t *graphics) {
   SDL_DestroyWindow(graphics->window);
 }
 
-void loadResources(graphics_t *graphics) {
+void loadResources(client_t *client) {
+  graphics_t *graphics = client->graphics;
+
   // Logo labels
   graphics->logo1 = loadLabel("TAHK", 64, COLOR_RED, graphics->renderer);
   graphics->logo2 = loadLabel("2015", 64, COLOR_RED, graphics->renderer);
@@ -56,9 +59,18 @@ void loadResources(graphics_t *graphics) {
   graphics->water[1] = loadTexture(graphics->textures, 264, 80, 8, 8, graphics->renderer);
   graphics->water[2] = loadTexture(graphics->textures, 272, 80, 8, 8, graphics->renderer);
 
+  // Load tank textures
+  graphics->tank[0][0] = loadTexture(graphics->textures,   0,   0, 16, 16, graphics->renderer);
+  graphics->tank[0][1] = loadTexture(graphics->textures,  16,   0, 16, 16, graphics->renderer);
+  graphics->tank[1][0] = loadTexture(graphics->textures,   0, 128, 16, 16, graphics->renderer);
+  graphics->tank[1][1] = loadTexture(graphics->textures,  16, 128, 16, 16, graphics->renderer);
+
   // Animation threads
   SDL_Thread *waterAnimT;
   waterAnimT = SDL_CreateThread(waterAnimThread, "waterAnimT", (void*)graphics);
+
+  SDL_Thread *tankAnimT;
+  tankAnimT = SDL_CreateThread(tankAnimThread, "tankAnimT", (void*)client);
 }
 
 void freeResources(graphics_t *graphics) {
@@ -76,6 +88,28 @@ int waterAnimThread(void *data) {
 
     // Animation speed
     SDL_Delay(333);
+  }
+}
+
+int tankAnimThread(void *data) {
+  client_t *client = (client_t*)data;
+
+  int i;
+  for(i = 0; i < 2; i++) {
+    client->graphics->tankAnim[i] = 0;
+  }
+
+  while(1) {
+    for(i = 0; i < 2; i++) {
+      if(client->tank[i].isMoving) {
+        if(++client->graphics->tankAnim[i] == 2) {
+          client->graphics->tankAnim[i] = 0;
+        }
+      }
+    }
+
+    // Animation speed
+    SDL_Delay(100);
   }
 }
 
@@ -148,19 +182,19 @@ void renderMenu(client_t *client) {
   SDL_RenderClear(graphics->renderer);
 
   // Render logo
-  renderTexture(graphics->logo1, 128, 64, 1, 1, graphics->renderer);
-  renderTexture(graphics->logo2, 128, 128, 1, 1, graphics->renderer);
+  renderTexture(graphics->logo1, 128, 64, 1, 1, 0.0, graphics->renderer);
+  renderTexture(graphics->logo2, 128, 128, 1, 1, 0.0, graphics->renderer);
 
   // Render connection status
   switch(client->cstatus) {
     case CONNECTING:
-    renderTexture(graphics->lcing, 168, 256, 1, 1, graphics->renderer); break;
+    renderTexture(graphics->lcing, 168, 256, 1, 1, 0.0, graphics->renderer); break;
     case CTIMEOUT:
-    renderTexture(graphics->lcout, 176, 256, 1, 1, graphics->renderer); break;
+    renderTexture(graphics->lcout, 176, 256, 1, 1, 0.0, graphics->renderer); break;
     case WAITING2ND:
-    renderTexture(graphics->lw2nd,  88, 256, 1, 1, graphics->renderer); break;
+    renderTexture(graphics->lw2nd,  88, 256, 1, 1, 0.0, graphics->renderer); break;
     case CONNECTED:
-    renderTexture(graphics->lcned, 112, 256, 1, 1, graphics->renderer); break;
+    renderTexture(graphics->lcned, 112, 256, 1, 1, 0.0, graphics->renderer); break;
   }
 
   // Update render
@@ -179,12 +213,17 @@ void render(client_t *client) {
   SDL_RenderFillRect(graphics->renderer, &background);
   SDL_SetRenderDrawColor(graphics->renderer,   0,   0,   0, SDL_ALPHA_OPAQUE);
 
+  // Set viewport to map
+  graphics->mapView = (SDL_Rect) { 31, 31, 416, 416 };
+  SDL_RenderSetViewport(graphics->renderer, &graphics->mapView);
+
   // Render map
-  int i, j;
-  int x = 31, y = 31;
-  for(i = 0; i < MAP_SIZE; i++, y += 16, x = 31) {
+  int i, j, k;
+  int x = 0, y = 0;
+  for(i = 0; i < MAP_SIZE; i++, y += 16, x = 0) {
     for(j = 0; j < MAP_SIZE; j++, x += 16) {
       SDL_Rect rect = { x, y, 16, 16 };
+
 
       switch(client->map->block[i][j].material) {
         case TERRA:
@@ -192,28 +231,43 @@ void render(client_t *client) {
         break;
 
         case BRICK:
-        renderTexture(graphics->brick, x, y, 2, 2, graphics->renderer);
+        renderTexture(graphics->brick, x, y, 2, 2, 0.0, graphics->renderer);
         break;
 
         case STEEL:
-        renderTexture(graphics->steel, x, y, 2, 2, graphics->renderer);
+        renderTexture(graphics->steel, x, y, 2, 2, 0.0, graphics->renderer);
         break;
 
         case GRASS:
         break;
 
         case WATER:
-        renderTexture(graphics->water[graphics->waterAnim], x, y, 2, 2, graphics->renderer);
+        renderTexture(graphics->water[graphics->waterAnim], x, y, 2, 2, 0.0, graphics->renderer);
         break;
       }
     }
   }
 
+  // Render tanks
+  for(y = 0; y < 416; y++) {
+    for(x = 0; x < 416; x++) {
+      for(k = 0; k < 2; k++) {
+        if(x == client->tank[k].posX && y == client->tank[k].posY) {
+          renderTexture(graphics->tank[k][graphics->tankAnim[k]], x, y, 2, 2,
+          client->tank[k].direction, graphics->renderer);
+        }
+      }
+    }
+  }
+
+  // Restore viewport
+  SDL_RenderSetViewport(graphics->renderer, NULL);
+
   // Update render
   SDL_RenderPresent(graphics->renderer);
 }
 
-void renderTexture(texture_t *texture, int x, int y, int sx, int sy, SDL_Renderer *renderer) {
+void renderTexture(texture_t *texture, int x, int y, int sx, int sy, double rotation, SDL_Renderer *renderer) {
   SDL_Rect dstrect = { x, y, sx * texture->width, sy * texture->height };
-  SDL_RenderCopy(renderer, texture->tex, NULL, &dstrect);
+  SDL_RenderCopyEx(renderer, texture->tex, NULL, &dstrect, rotation, NULL, SDL_FLIP_NONE);
 }
