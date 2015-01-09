@@ -3,6 +3,7 @@
 #include "framework.h"
 #include "map.h"
 #include "graphics.h"
+#include "tank.h"
 
 typedef enum {
   CONNECTING,
@@ -11,7 +12,17 @@ typedef enum {
   CONNECTED
 } cstatus_t;
 
+typedef enum {
+  KEY_UP,
+  KEY_DOWN,
+  KEY_LEFT,
+  KEY_RIGHT
+} keys_t;
+
 typedef struct {
+  int keyPressed[4];
+  // Tanks
+  tank_t tank[2];
   // Server host and port
   char *host;
   int port;
@@ -23,7 +34,8 @@ typedef struct {
   int isPlaying;
   cstatus_t cstatus;
   // Player ID
-  int playerID;
+  int myPlayerID;
+  int hisPlayerID;
   // Level map
   int level;
   map_t *map;
