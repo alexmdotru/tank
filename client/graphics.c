@@ -249,15 +249,9 @@ void render(client_t *client) {
   }
 
   // Render tanks
-  for(y = 0; y < 416; y++) {
-    for(x = 0; x < 416; x++) {
-      for(k = 0; k < 2; k++) {
-        if(x == client->tank[k].posX && y == client->tank[k].posY) {
-          renderTexture(graphics->tank[k][graphics->tankAnim[k]], x, y, 2, 2,
-          client->tank[k].direction, graphics->renderer);
-        }
-      }
-    }
+  for(k = 0; k < 2; k++) {
+      renderTexture(graphics->tank[k][graphics->tankAnim[k]], client->tank[k].posX,
+        client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
   }
 
   // Restore viewport
