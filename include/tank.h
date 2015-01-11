@@ -19,4 +19,5 @@ typedef struct {
   int posY;
   int velocity;
   int isMoving;
+  int isOnTheWay;
 } tank_t;

@@ -18,6 +18,8 @@ int prepareClientThread(void *data);
 void loadMapFromFile(client_t *client);
 void loadResources(client_t *client);
 void updateCoordinates(client_t *client);
+int checkCollision(client_t* client);
+int moveTankThread(void *data);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -143,73 +145,130 @@ void update(client_t *client) {
 void updateCoordinates(client_t *client) {
   tank_t *tank = &client->tank[client->myPlayerID];
 
-  // Move up and turn
-  if(client->keyPressed[KEY_UP]) {
-    tank->isMoving = 1;
+  if(!tank->isOnTheWay) {
+    // Move up and turn
+    if(client->keyPressed[KEY_UP]) {
+      tank->isMoving = 1;
 
-    if(client->keyPressed[KEY_DOWN]) {
-      tank->isMoving = 0;
+      if(client->keyPressed[KEY_DOWN]) {
+        tank->isMoving = 0;
+      }
+      else if(client->keyPressed[KEY_LEFT]) {
+        tank->direction = LEFT;
+      }
+      else if(client->keyPressed[KEY_RIGHT]) {
+        tank->direction = RIGHT;
+      }
+      else tank->direction = UP;
     }
+
+    // Move down and turn
+    else if(client->keyPressed[KEY_DOWN]) {
+      tank->isMoving = 1;
+
+      if(client->keyPressed[KEY_LEFT]) {
+        tank->direction = LEFT;
+      }
+      else if(client->keyPressed[KEY_RIGHT]) {
+        tank->direction = RIGHT;
+      }
+      else tank->direction = DOWN;
+    }
+
+    // Turn left
     else if(client->keyPressed[KEY_LEFT]) {
-      tank->direction = LEFT;
+      tank->isMoving = 1;
+
+      if(client->keyPressed[KEY_RIGHT]) {
+        tank->isMoving = 0;
+      }
+      else tank->direction = LEFT;
     }
+
+    // Turn right
     else if(client->keyPressed[KEY_RIGHT]) {
+      tank->isMoving = 1;
       tank->direction = RIGHT;
     }
-    else tank->direction = UP;
-  }
 
-  // Move down and turn
-  else if(client->keyPressed[KEY_DOWN]) {
-    tank->isMoving = 1;
+    // Stop
+    else tank->isMoving = 0;
 
-    if(client->keyPressed[KEY_LEFT]) {
-      tank->direction = LEFT;
-    }
-    else if(client->keyPressed[KEY_RIGHT]) {
-      tank->direction = RIGHT;
-    }
-    else tank->direction = DOWN;
-  }
-
-  // Turn left
-  else if(client->keyPressed[KEY_LEFT]) {
-    tank->isMoving = 1;
-
-    if(client->keyPressed[KEY_RIGHT]) {
-      tank->isMoving = 0;
-    }
-    else tank->direction = LEFT;
-  }
-
-  // Turn right
-  else if(client->keyPressed[KEY_RIGHT]) {
-    tank->isMoving = 1;
-    tank->direction = RIGHT;
-  }
-
-  // Stop
-  else tank->isMoving = 0;
-
-  if(tank->isMoving) {
-    switch(tank->direction) {
-      case UP:
-      tank->posY -= tank->velocity;
-      break;
-
-      case DOWN:
-      tank->posY += tank->velocity;
-      break;
-
-      case LEFT:
-      tank->posX -= tank->velocity;
-      break;
-
-      case RIGHT:
-      tank->posX += tank->velocity;
-      break;
+    if(tank->isMoving) {
+      SDL_Thread *moveTankT;
+      moveTankT = SDL_CreateThread(moveTankThread, "moveTankT", (void*)client);
     }
   }
+}
+
+int moveTankThread(void *data) {
+  client_t *client = (client_t*)data;
+  tank_t *tank = &client->tank[client->myPlayerID];
+
+
+  if(!checkCollision(client)) {
+    tank->isOnTheWay = 1;
+
+    uint8_t i;
+    for(i = 0; i < 16; i++) {
+      switch(tank->direction) {
+        case UP:
+        tank->posY -= tank->velocity;
+        break;
+
+        case DOWN:
+        tank->posY += tank->velocity;
+        break;
+
+        case LEFT:
+        tank->posX -= tank->velocity;
+        break;
+
+        case RIGHT:
+        tank->posX += tank->velocity;
+        break;
+      }
+
+      SDL_Delay(10);
+    }
+
+    tank->isOnTheWay = 0;
+  }
+
+  return 0;
+}
+
+int checkCollision(client_t* client) {
+  tank_t *tank = &client->tank[client->myPlayerID];
+
+  // Calculate tank position
+  size_t blockX, blockY;
+  blockX = tank->posX / 16;
+  blockY = tank->posY / 16;
+
+  switch(tank->direction) {
+    case UP:
+    if(client->map->block[blockY-1][blockX].material   != TERRA) return 1;
+    if(client->map->block[blockY-1][blockX+1].material != TERRA) return 1;
+    break;
+
+    case DOWN:
+    if(client->map->block[blockY+2][blockX].material   != TERRA) return 1;
+    if(client->map->block[blockY+2][blockX+1].material != TERRA) return 1;
+    break;
+
+    case LEFT:
+    if(client->map->block[blockY][blockX-1].material   != TERRA) return 1;
+    if(client->map->block[blockY+1][blockX-1].material != TERRA) return 1;
+    break;
+
+    case RIGHT:
+    if(client->map->block[blockY][blockX+2].material   != TERRA) return 1;
+    if(client->map->block[blockY+1][blockX+2].material != TERRA) return 1;
+    break;
+  }
+
+  return 0;
 }
 
 int connectToServerThread(void *data) {
@@ -254,7 +313,6 @@ int prepareClientThread(void *data) {
 
   // No input yet
   int i;
-  client->keyPresses = 0;
   for(i = 0; i < 4; i++) {
     client->keyPressed[i] = 0;
   }
