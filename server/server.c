@@ -42,7 +42,7 @@ void acceptConnection(server_t *server) {
   if(cSocket) {
     SDLNet_TCP_Send(cSocket, &server->playerID, 4);
     server->cSocket[server->playerID] = cSocket;
-    fprintf(stderr, "Accepted from player %d\n", server->playerID++);
+    fprintf(stderr, "Accepted from player %d.\n", server->playerID++);
   }
 
   if(server->playerID > 1) {
