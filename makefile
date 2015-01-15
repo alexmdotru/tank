@@ -31,7 +31,10 @@ map.o: client/map.c
 animation.o: client/animation.c
 	$(COMPILER) $(CFLAGS) $(FWORKS) $< -o $(OBJDIR)/$@
 
-client: framework.o client.o graphics.o network.o map.o animation.o
+input.o: client/input.c
+	$(COMPILER) $(CFLAGS) $(FWORKS) $< -o $(OBJDIR)/$@
+
+client: framework.o client.o graphics.o network.o map.o animation.o input.o
 	$(CC) $(FWORKS) $(LDFLAGS) \
 	$(OBJDIR)/framework.o \
 	$(OBJDIR)/client.o \
@@ -39,6 +42,7 @@ client: framework.o client.o graphics.o network.o map.o animation.o
 	$(OBJDIR)/network.o \
 	$(OBJDIR)/map.o \
 	$(OBJDIR)/animation.o \
+	$(OBJDIR)/input.o \
 	-o $(EXEDIR)/$(CLIENT)
 
 server: server.o framework.o network.o
