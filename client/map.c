@@ -1,9 +1,19 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "map.h"
 
-map_t *loadMap(char *filename) {
+map_t *loadMap(int level) {
   map_t *map;
+
+  // Process filename
+  char filename[256];
+  char levelStr[256];
+  sprintf(levelStr, "%d", level);
+  strcpy(filename, "resources/maps/level");
+  strcat(filename, levelStr);
+  strcat(filename, ".map");
+
   map = malloc(sizeof(map_t));
 
   // Open map file

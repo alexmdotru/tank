@@ -18,4 +18,4 @@ typedef struct {
   block_t block[26][26];
 } map_t;
 
-map_t *loadMap(char *filename);
+map_t *loadMap(int level);
