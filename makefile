@@ -25,7 +25,7 @@ graphics.o: client/graphics.c
 network.o: common/network.c
 	$(COMPILER) $(CFLAGS) $(FWORKS) $< -o $(OBJDIR)/$@
 
-map.o: client/map.c
+map.o: common/map.c
 	$(COMPILER) $(CFLAGS) $(FWORKS) $< -o $(OBJDIR)/$@
 
 animation.o: client/animation.c
@@ -34,7 +34,10 @@ animation.o: client/animation.c
 input.o: client/input.c
 	$(COMPILER) $(CFLAGS) $(FWORKS) $< -o $(OBJDIR)/$@
 
-client: framework.o client.o graphics.o network.o map.o animation.o input.o
+tank.o: common/tank.c
+	$(COMPILER) $(CFLAGS) $(FWORKS) $< -o $(OBJDIR)/$@
+
+client: framework.o client.o graphics.o network.o map.o animation.o input.o tank.o
 	$(CC) $(FWORKS) $(LDFLAGS) \
 	$(OBJDIR)/framework.o \
 	$(OBJDIR)/client.o \
@@ -43,6 +46,7 @@ client: framework.o client.o graphics.o network.o map.o animation.o input.o
 	$(OBJDIR)/map.o \
 	$(OBJDIR)/animation.o \
 	$(OBJDIR)/input.o \
+	$(OBJDIR)/tank.o \
 	-o $(EXEDIR)/$(CLIENT)
 
 server: server.o framework.o network.o
