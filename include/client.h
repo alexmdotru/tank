@@ -16,13 +16,15 @@ typedef enum {
   KEY_UP,
   KEY_DOWN,
   KEY_LEFT,
-  KEY_RIGHT
+  KEY_RIGHT,
+  KEY_SPACE
 } keys_t;
 
 typedef struct {
-  int keyPressed[4];
+  int keyPressed[5];
   // Tanks
   tank_t tank[2];
+  uint32_t tanks;
   // Server host and port
   char *host;
   int port;
