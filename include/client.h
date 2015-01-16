@@ -5,6 +5,8 @@
 #include "graphics.h"
 #include "tank.h"
 
+#define KEYS 5
+
 typedef enum {
   CONNECTING,
   CTIMEOUT,
@@ -23,7 +25,7 @@ typedef enum {
 typedef struct {
   int keyPressed[5];
   // Tanks
-  tank_t tank[2];
+  tank_t tank[6];
   uint32_t tanks;
   // Server host and port
   char *host;

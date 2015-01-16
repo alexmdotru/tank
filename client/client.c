@@ -6,6 +6,7 @@
 #include "network.h"
 #include "map.h"
 #include "tank.h"
+#include "input.h"
 
 void gameLoop(client_t *client);
 int connectToServerThread(void *data);
@@ -15,11 +16,11 @@ void update(client_t *client);
 void render(client_t *client);
 void startGame(client_t *client);
 int prepareClientThread(void *data);
-void loadMapFromFile(client_t *client);
 void loadResources(client_t *client);
 void updateCoordinates(client_t *client);
-int checkCollision(client_t* client);
-int moveTankThread(void *data);
+void updateFire(client_t *client);
+void destroyBlock(client_t *client, int i, int j);
+void updatePlayerTank(client_t *client);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -80,195 +81,86 @@ void updateMenu(client_t *client) {
   while(SDL_PollEvent(&event)) {
     switch(event.type) {
       case SDL_QUIT:
-      client->gameRunning = 0; break;
+      client->gameRunning = 0;
+      break;
     }
   }
 }
 
 void update(client_t *client) {
-  SDL_Event event;
+  processInput(client);
+  updatePlayerTank(client);
+  updateEnemyTank(&client->tank[2], client->map);
+  moveTank(&client->tank[client->myPlayerID]);
+  moveTank(&client->tank[2]);
+  // updateCoordinates(client);
+  // updateFire(client);
+}
 
-  while(SDL_PollEvent(&event)) {
-    switch(event.type) {
-      case SDL_QUIT:
-      client->isPlaying = 0;
-      client->gameRunning = 0;
-      break;
+void updateFire(client_t *client) {
+  tank_t *tank = &client->tank[client->myPlayerID];
 
-      case SDL_KEYDOWN:
-      if(!event.key.repeat) {
-        switch(event.key.keysym.sym) {
-          case SDLK_UP:
-          client->keyPressed[KEY_UP] = 1;
-          break;
+  if(!tank->isFiring && client->keyPressed[KEY_SPACE]) {
+    tank->isFiring = 1;
+    tank->shot.posX = tank->posX;
+    tank->shot.posY = tank->posY;
+    client->keyPressed[KEY_SPACE] = 0;
+    return;
+  }
+  else if(tank->isFiring) {
+    // Calculate shot position
+    size_t blockX, blockY;
+    blockX = tank->shot.posX / 16;
+    blockY = tank->shot.posY / 16;
 
-          case SDLK_DOWN:
-          client->keyPressed[KEY_DOWN] = 1;
-          break;
-
-          case SDLK_LEFT:
-          client->keyPressed[KEY_LEFT] = 1;
-          break;
-
-          case SDLK_RIGHT:
-          client->keyPressed[KEY_RIGHT] = 1;
-          break;
+    switch(tank->direction) {
+      case UP:
+      if(tank->shot.posY % 16 == 0) {
+        if(client->map->block[blockY-1][blockX+1].material == BRICK) {
+          destroyBlock(client, blockY-1, blockX+1);
+        }
+        else if(client->map->block[blockY-1][blockX].material == BRICK) {
+          destroyBlock(client, blockY-1, blockX);
         }
       }
+      tank->shot.posY -= 4 * tank->velocity;
       break;
 
-      case SDL_KEYUP:
-      switch(event.key.keysym.sym) {
-        case SDLK_UP:
-        client->keyPressed[KEY_UP] = 0;
-        break;
-
-        case SDLK_DOWN:
-        client->keyPressed[KEY_DOWN] = 0;
-        break;
-
-        case SDLK_LEFT:
-        client->keyPressed[KEY_LEFT] = 0;
-        break;
-
-        case SDLK_RIGHT:
-        client->keyPressed[KEY_RIGHT] = 0;
-        break;
+      case DOWN:
+      if(tank->shot.posY % 16 == 0) {
+        if(client->map->block[blockY+2][blockX+1].material == BRICK) {
+          destroyBlock(client, blockY+2, blockX+1);
+        }
+        else if(client->map->block[blockY+2][blockX].material == BRICK) {
+          destroyBlock(client, blockY+2, blockX);
+        }
       }
+      tank->shot.posY += 4 * tank->velocity;
+      break;
+
+      case LEFT:
+      if(tank->shot.posX % 16 == 0) {
+        if(client->map->block[blockY][blockX-1].material == BRICK) {
+          destroyBlock(client, blockY, blockX-1);
+        }
+        else if(client->map->block[blockY+1][blockX-1].material == BRICK) {
+          destroyBlock(client, blockY+1, blockX-1);
+        }
+      }
+      tank->shot.posX -= 4 * tank->velocity;
+      break;
+
+      case RIGHT:
+      tank->shot.posX += 4 * tank->velocity;
       break;
     }
   }
-
-  updateCoordinates(client);
 }
 
-void updateCoordinates(client_t *client) {
-  tank_t *tank = &client->tank[client->myPlayerID];
-
-  if(!tank->isOnTheWay) {
-    // Move up and turn
-    if(client->keyPressed[KEY_UP]) {
-      tank->isMoving = 1;
-
-      if(client->keyPressed[KEY_DOWN]) {
-        tank->isMoving = 0;
-      }
-      else if(client->keyPressed[KEY_LEFT]) {
-        tank->direction = LEFT;
-      }
-      else if(client->keyPressed[KEY_RIGHT]) {
-        tank->direction = RIGHT;
-      }
-      else tank->direction = UP;
-    }
-
-    // Move down and turn
-    else if(client->keyPressed[KEY_DOWN]) {
-      tank->isMoving = 1;
-
-      if(client->keyPressed[KEY_LEFT]) {
-        tank->direction = LEFT;
-      }
-      else if(client->keyPressed[KEY_RIGHT]) {
-        tank->direction = RIGHT;
-      }
-      else tank->direction = DOWN;
-    }
-
-    // Turn left
-    else if(client->keyPressed[KEY_LEFT]) {
-      tank->isMoving = 1;
-
-      if(client->keyPressed[KEY_RIGHT]) {
-        tank->isMoving = 0;
-      }
-      else tank->direction = LEFT;
-    }
-
-    // Turn right
-    else if(client->keyPressed[KEY_RIGHT]) {
-      tank->isMoving = 1;
-      tank->direction = RIGHT;
-    }
-
-    // Stop
-    else tank->isMoving = 0;
-
-    if(tank->isMoving) {
-      SDL_Thread *moveTankT;
-      moveTankT = SDL_CreateThread(moveTankThread, "moveTankT", (void*)client);
-    }
-  }
-}
-
-int moveTankThread(void *data) {
-  client_t *client = (client_t*)data;
-  tank_t *tank = &client->tank[client->myPlayerID];
-
-
-  if(!checkCollision(client)) {
-    tank->isOnTheWay = 1;
-
-    uint8_t i;
-    for(i = 0; i < 16; i++) {
-      switch(tank->direction) {
-        case UP:
-        tank->posY -= tank->velocity;
-        break;
-
-        case DOWN:
-        tank->posY += tank->velocity;
-        break;
-
-        case LEFT:
-        tank->posX -= tank->velocity;
-        break;
-
-        case RIGHT:
-        tank->posX += tank->velocity;
-        break;
-      }
-
-      SDL_Delay(10);
-    }
-
-    tank->isOnTheWay = 0;
-  }
-
-  return 0;
-}
-
-int checkCollision(client_t* client) {
-  tank_t *tank = &client->tank[client->myPlayerID];
-
-  // Calculate tank position
-  size_t blockX, blockY;
-  blockX = tank->posX / 16;
-  blockY = tank->posY / 16;
-
-  switch(tank->direction) {
-    case UP:
-    if(client->map->block[blockY-1][blockX].material   != TERRA) return 1;
-    if(client->map->block[blockY-1][blockX+1].material != TERRA) return 1;
-    break;
-
-    case DOWN:
-    if(client->map->block[blockY+2][blockX].material   != TERRA) return 1;
-    if(client->map->block[blockY+2][blockX+1].material != TERRA) return 1;
-    break;
-
-    case LEFT:
-    if(client->map->block[blockY][blockX-1].material   != TERRA) return 1;
-    if(client->map->block[blockY+1][blockX-1].material != TERRA) return 1;
-    break;
-
-    case RIGHT:
-    if(client->map->block[blockY][blockX+2].material   != TERRA) return 1;
-    if(client->map->block[blockY+1][blockX+2].material != TERRA) return 1;
-    break;
-  }
-
-  return 0;
+void destroyBlock(client_t *client, int i, int j) {
+  client->map->block[i][j].material = TERRA;
+  client->tank[client->myPlayerID].isFiring = 0;
+  client->tank[client->myPlayerID].shot.explodes = 1;
 }
 
 int connectToServerThread(void *data) {
@@ -305,39 +197,6 @@ int connectToServerThread(void *data) {
   return 0;
 }
 
-int prepareClientThread(void *data) {
-  client_t *client = (client_t*)data;
-
-  // Load level
-  loadMapFromFile(client);
-
-  // No input yet
-  int i;
-  for(i = 0; i < 4; i++) {
-    client->keyPressed[i] = 0;
-  }
-
-  // Set up player IDs
-  if(client->myPlayerID == 0) client->hisPlayerID = 1;
-  else client->hisPlayerID = 0;
-
-  // Prepare tanks
-  client->tank[0] = (tank_t) { PLAYER, UP, 128, 384, 1, 0 };
-  client->tank[1] = (tank_t) { PLAYER, UP, 256, 384, 1, 0 };
-
-  return 0;
-}
-
-void loadMapFromFile(client_t *client) {
-  char  file[256];
-  char level[256];
-  sprintf(level, "%d", client->level);
-  strcpy(file, "resources/maps/level");
-  strcat(file, level);
-  strcat(file, ".map");
-  client->map = loadMap(file);
-}
-
 void startGame(client_t *client) {
   // Prepare client
   SDL_Thread *prepareClientT;
@@ -347,4 +206,28 @@ void startGame(client_t *client) {
   // Start game
   client->isInMainMenu = 0;
   client->isPlaying = 1;
+}
+
+int prepareClientThread(void *data) {
+  client_t *client = (client_t*)data;
+
+  // Load level
+  client->map = loadMap(client->level);
+
+  // No input yet
+  uint8_t i;
+  for(i = 0; i < KEYS; i++) {
+    client->keyPressed[i] = 0;
+  }
+
+  // Set up player IDs
+  if(client->myPlayerID == 0) client->hisPlayerID = 1;
+  else client->hisPlayerID = 0;
+
+  // Prepare tanks
+  client->tanks = 2;
+  client->tank[0] = (tank_t) { PLAYER, UP, 128, 384, 1, 0, 0, 0, 0 };
+  client->tank[1] = (tank_t) { PLAYER, UP, 256, 384, 1, 0, 0, 0, 0 };
+
+  return 0;
 }
