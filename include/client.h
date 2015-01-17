@@ -23,9 +23,9 @@ typedef enum {
 } keys_t;
 
 typedef struct {
+  tank_t tank[6];
   int keyPressed[5];
   // Tanks
-  tank_t tank[6];
   uint32_t tanks;
   // Server host and port
   char *host;
