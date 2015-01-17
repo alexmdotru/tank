@@ -19,12 +19,12 @@ int tankAnimThread(void *data) {
   client_t *client = (client_t*)data;
 
   size_t i;
-  for(i = 0; i < 2; i++) {
+  for(i = 0; i < TANKS; i++) {
     client->graphics->tankAnim[i] = 0;
   }
 
   while(1) {
-    for(i = 0; i < 2; i++) {
+    for(i = 0; i < TANKS; i++) {
       if(client->tank[i].isMoving) {
         if(++client->graphics->tankAnim[i] == 2) {
           client->graphics->tankAnim[i] = 0;
