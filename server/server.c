@@ -3,9 +3,12 @@
 #include "framework.h"
 #include "network.h"
 #include "server.h"
+#include "tank.h"
+#include "map.h"
 
 void acceptConnection(server_t *server);
 void serverLoop(server_t *server);
+void spawnEnemy(server_t *server);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -49,15 +52,26 @@ void acceptConnection(server_t *server) {
     // Send level info
     SDLNet_TCP_Send(server->cSocket[0], &server->level, 4);
     SDLNet_TCP_Send(server->cSocket[1], &server->level, 4);
+    SDL_Delay(3000);
   }
 }
 
 void serverLoop(server_t *server) {
+  uint8_t i;
+
   // Server is running
   server->serverRunning = 1;
 
   // No players
   server->playerID = 0;
+  server->enemies = 0;
+  for(i = 2; i < TANKS; i++) {
+    server->tank[i].null = 1;
+  }
+  server->enemiesDelay = 0;
+
+  // Load map
+  server->map = loadMap(server->level);
 
   // Open server socket
   server->sSocket = openTCPSocket(server->host, server->port);
@@ -69,12 +83,22 @@ void serverLoop(server_t *server) {
     while(SDL_PollEvent(&event)) {
       switch(event.type) {
         case SDL_QUIT:
-        server->serverRunning = 0; break;
+        server->serverRunning = 0;
+        break;
       }
     }
 
     if(server->playerID > 1) {
-
+      spawnEnemy(server);
+      // Update enemies
+      for(i = 2; i < TANKS; i++) {
+        if(!server->tank[i].null) {
+          updateEnemyTank(&server->tank[i], server->map);
+          moveTank(&server->tank[i]);
+        }
+        sendTankStruct(&server->tank[i], server->cSocket[0]);
+        sendTankStruct(&server->tank[i], server->cSocket[1]);
+      }
     }
     else {
       acceptConnection(server);
