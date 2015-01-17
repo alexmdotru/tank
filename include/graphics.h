@@ -1,5 +1,7 @@
 #pragma once
 
+#include "framework.h"
+
 #define WINDOW_WIDTH  512
 #define WINDOW_HEIGHT 480
 
@@ -30,8 +32,13 @@ typedef struct {
   texture_t *water[3];
   int waterAnim;
   // Tanks
-  texture_t *tank[2][2];
-  int tankAnim[2];
+  texture_t *tank[3][2];
+  int tankAnim[6];
+  // Fire
+  texture_t *fire;
+  // Explosion
+  texture_t *explosion[3];
+
   // Map viewport
   SDL_Rect mapView;
 } graphics_t;
