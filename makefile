@@ -49,10 +49,11 @@ client: framework.o client.o graphics.o network.o map.o animation.o input.o tank
 	$(OBJDIR)/tank.o \
 	-o $(EXEDIR)/$(CLIENT)
 
-server: server.o framework.o network.o tank.o
+server: server.o framework.o network.o tank.o map.o
 	$(CC) $(FWORKS) $(LDFLAGS) \
 	$(OBJDIR)/framework.o \
 	$(OBJDIR)/network.o \
 	$(OBJDIR)/server.o \
 	$(OBJDIR)/tank.o \
+	$(OBJDIR)/map.o \
 	-o $(EXEDIR)/$(SERVER)
