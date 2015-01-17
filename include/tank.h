@@ -1,6 +1,8 @@
 #pragma once
 
-#include "client.h"
+#include "map.h"
+
+#define TANKS 6
 
 typedef enum {
   PLAYER,
@@ -29,9 +31,12 @@ typedef struct {
   uint8_t velocity;
   uint8_t isMoving;
   uint8_t isOnTheWay;
+  uint32_t moveDelay;
   uint8_t isFiring;
   shot_t shot;
-  uint32_t moveDelay;
+  uint8_t null;
 } tank_t;
 
+void updateEnemyTank(tank_t *tank, map_t *map);
+void moveTank(tank_t *tank);
 int checkCollision(tank_t *tank, map_t *map);
