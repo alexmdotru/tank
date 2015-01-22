@@ -4,6 +4,7 @@
 #include "client.h"
 #include "graphics.h"
 #include "map.h"
+#include "animation.h"
 
 // Colors
 SDL_Color SOLOR_BLACK = {   0,   0,   0 };
@@ -16,8 +17,6 @@ texture_t *loadLabel(char *text, int size, SDL_Color color, SDL_Renderer *render
 void renderTexture(texture_t *texture, int x, int y, int sx, int sy, double rotation, SDL_Renderer *renderer);
 SDL_Surface *pngToSurface(char *file);
 texture_t *loadTexture(SDL_Surface *src, int x, int y, int szx, int szy, SDL_Renderer *renderer);
-int waterAnimThread(void *data);
-int tankAnimThread(void *data);
 
 void loadFrame(graphics_t *graphics) {
   graphics->window = SDL_CreateWindow("TAHK-2015", SDL_WINDOWPOS_CENTERED,
@@ -60,10 +59,23 @@ void loadResources(client_t *client) {
   graphics->water[2] = loadTexture(graphics->textures, 272, 80, 8, 8, graphics->renderer);
 
   // Load tank textures
-  graphics->tank[0][0] = loadTexture(graphics->textures,   0,   0, 16, 16, graphics->renderer);
-  graphics->tank[0][1] = loadTexture(graphics->textures,  16,   0, 16, 16, graphics->renderer);
-  graphics->tank[1][0] = loadTexture(graphics->textures,   0, 128, 16, 16, graphics->renderer);
-  graphics->tank[1][1] = loadTexture(graphics->textures,  16, 128, 16, 16, graphics->renderer);
+  // Player 1
+  graphics->tank[0][0] = loadTexture(graphics->textures,   0,   0, 15, 16, graphics->renderer);
+  graphics->tank[0][1] = loadTexture(graphics->textures,  16,   0, 15, 16, graphics->renderer);
+  // Player 2
+  graphics->tank[1][0] = loadTexture(graphics->textures,   0, 128, 15, 16, graphics->renderer);
+  graphics->tank[1][1] = loadTexture(graphics->textures,  16, 128, 15, 16, graphics->renderer);
+  // Enemy
+  graphics->tank[2][0] = loadTexture(graphics->textures, 128,   0, 15, 16, graphics->renderer);
+  graphics->tank[2][1] = loadTexture(graphics->textures, 144,   0, 15, 16, graphics->renderer);
+
+  // Load fire texture
+  graphics->fire = loadTexture(graphics->textures, 320, 100, 8, 8, graphics->renderer);
+
+  // Load explosion textures
+  graphics->explosion[0] = loadTexture(graphics->textures, 256, 128, 16, 16, graphics->renderer);
+  graphics->explosion[1] = loadTexture(graphics->textures, 272, 128, 16, 16, graphics->renderer);
+  graphics->explosion[2] = loadTexture(graphics->textures, 288, 128, 16, 16, graphics->renderer);
 
   // Animation threads
   SDL_Thread *waterAnimT;
@@ -71,46 +83,13 @@ void loadResources(client_t *client) {
 
   SDL_Thread *tankAnimT;
   tankAnimT = SDL_CreateThread(tankAnimThread, "tankAnimT", (void*)client);
+
+  SDL_Thread *explosionAnimT;
+  explosionAnimT = SDL_CreateThread(explosionAnimThread, "explosionAnimT", (void*)client);
 }
 
 void freeResources(graphics_t *graphics) {
   SDL_FreeSurface(graphics->textures);
-}
-
-int waterAnimThread(void *data) {
-  graphics_t *graphics = (graphics_t*)data;
-  graphics->waterAnim = 0;
-
-  while(1) {
-    if(++graphics->waterAnim == 3) {
-      graphics->waterAnim = 0;
-    }
-
-    // Animation speed
-    SDL_Delay(333);
-  }
-}
-
-int tankAnimThread(void *data) {
-  client_t *client = (client_t*)data;
-
-  int i;
-  for(i = 0; i < 2; i++) {
-    client->graphics->tankAnim[i] = 0;
-  }
-
-  while(1) {
-    for(i = 0; i < 2; i++) {
-      if(client->tank[i].isMoving) {
-        if(++client->graphics->tankAnim[i] == 2) {
-          client->graphics->tankAnim[i] = 0;
-        }
-      }
-    }
-
-    // Animation speed
-    SDL_Delay(100);
-  }
 }
 
 SDL_Surface *pngToSurface(char *file) {
@@ -218,12 +197,11 @@ void render(client_t *client) {
   SDL_RenderSetViewport(graphics->renderer, &graphics->mapView);
 
   // Render map
-  int i, j, k;
+  size_t i, j, k;
   int x = 0, y = 0;
   for(i = 0; i < MAP_SIZE; i++, y += 16, x = 0) {
     for(j = 0; j < MAP_SIZE; j++, x += 16) {
       SDL_Rect rect = { x, y, 16, 16 };
-
 
       switch(client->map->block[i][j].material) {
         case TERRA:
@@ -250,8 +228,24 @@ void render(client_t *client) {
 
   // Render tanks
   for(k = 0; k < 2; k++) {
-      renderTexture(graphics->tank[k][graphics->tankAnim[k]], client->tank[k].posX,
-        client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
+    renderTexture(graphics->tank[k][graphics->tankAnim[k]], client->tank[k].posX+1,
+    client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
+    // if(client->tank[k]->isFiring) {
+    //   renderTexture(graphics->fire, client->tank[k]->shot.posX + 7, client->tank[k]->shot.posY,
+    //   2, 2, client->tank[k]->direction, graphics->renderer);
+    // }
+    // if(client->tank[k]->shot.explodes) {
+    //   renderTexture(graphics->explosion[client->tank[k]->shot.explosionAnim],
+    //   client->tank[k]->shot.posX, client->tank[k]->shot.posY,
+    //   2, 2, client->tank[k]->direction, graphics->renderer);
+  }
+
+  for(k = 2; k < TANKS; k++) {
+    if(!client->tank[k].null) {
+      fprintf(stderr, "TANK X %d Y %d LOL\n", client->tank[k].posX, client->tank[k].posY);
+      renderTexture(graphics->tank[2][graphics->tankAnim[k]], client->tank[k].posX+1,
+      client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
+    }
   }
 
   // Restore viewport

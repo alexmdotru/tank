@@ -33,7 +33,7 @@ typedef struct {
   int waterAnim;
   // Tanks
   texture_t *tank[3][2];
-  int tankAnim[6];
+  uint8_t tankAnim[6];
   // Fire
   texture_t *fire;
   // Explosion
