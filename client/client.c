@@ -17,10 +17,9 @@ void render(client_t *client);
 void startGame(client_t *client);
 int prepareClientThread(void *data);
 void loadResources(client_t *client);
-void updateCoordinates(client_t *client);
-void updateFire(client_t *client);
-void destroyBlock(client_t *client, int i, int j);
 void updatePlayerTank(client_t *client);
+void updateMap(map_t *map, tank_t *tank);
+void recvMapUpdates(client_t *client);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -88,79 +87,29 @@ void updateMenu(client_t *client) {
 }
 
 void update(client_t *client) {
+  // Process player input
   processInput(client);
+  // Update coordinates and fire
   updatePlayerTank(client);
-  updateEnemyTank(&client->tank[2], client->map);
   moveTank(&client->tank[client->myPlayerID]);
-  moveTank(&client->tank[2]);
-  // updateCoordinates(client);
-  // updateFire(client);
-}
+  updateFire(&client->tank[client->myPlayerID], client->map);
 
-void updateFire(client_t *client) {
-  tank_t *tank = &client->tank[client->myPlayerID];
-
-  if(!tank->isFiring && client->keyPressed[KEY_SPACE]) {
-    tank->isFiring = 1;
-    tank->shot.posX = tank->posX;
-    tank->shot.posY = tank->posY;
-    client->keyPressed[KEY_SPACE] = 0;
-    return;
+  uint8_t i;
+  // Update enemies
+  for(i = 2; i < TANKS; i++) {
+    recvTankStruct(&client->tank[i], client->socket);
   }
-  else if(tank->isFiring) {
-    // Calculate shot position
-    size_t blockX, blockY;
-    blockX = tank->shot.posX / 16;
-    blockY = tank->shot.posY / 16;
 
-    switch(tank->direction) {
-      case UP:
-      if(tank->shot.posY % 16 == 0) {
-        if(client->map->block[blockY-1][blockX+1].material == BRICK) {
-          destroyBlock(client, blockY-1, blockX+1);
-        }
-        else if(client->map->block[blockY-1][blockX].material == BRICK) {
-          destroyBlock(client, blockY-1, blockX);
-        }
-      }
-      tank->shot.posY -= 4 * tank->velocity;
-      break;
+  // Update me
+  sendTankStruct(&client->tank[client->myPlayerID], client->socket);
 
-      case DOWN:
-      if(tank->shot.posY % 16 == 0) {
-        if(client->map->block[blockY+2][blockX+1].material == BRICK) {
-          destroyBlock(client, blockY+2, blockX+1);
-        }
-        else if(client->map->block[blockY+2][blockX].material == BRICK) {
-          destroyBlock(client, blockY+2, blockX);
-        }
-      }
-      tank->shot.posY += 4 * tank->velocity;
-      break;
+  // Update friend
+  recvTankStruct(&client->tank[client->hisPlayerID], client->socket);
 
-      case LEFT:
-      if(tank->shot.posX % 16 == 0) {
-        if(client->map->block[blockY][blockX-1].material == BRICK) {
-          destroyBlock(client, blockY, blockX-1);
-        }
-        else if(client->map->block[blockY+1][blockX-1].material == BRICK) {
-          destroyBlock(client, blockY+1, blockX-1);
-        }
-      }
-      tank->shot.posX -= 4 * tank->velocity;
-      break;
-
-      case RIGHT:
-      tank->shot.posX += 4 * tank->velocity;
-      break;
-    }
+  // Destroy map blocks
+  for(i = 0; i < TANKS; i++) {
+    updateMap(client->map, &client->tank[i]);
   }
-}
-
-void destroyBlock(client_t *client, int i, int j) {
-  client->map->block[i][j].material = TERRA;
-  client->tank[client->myPlayerID].isFiring = 0;
-  client->tank[client->myPlayerID].shot.explodes = 1;
 }
 
 int connectToServerThread(void *data) {
@@ -224,10 +173,13 @@ int prepareClientThread(void *data) {
   if(client->myPlayerID == 0) client->hisPlayerID = 1;
   else client->hisPlayerID = 0;
 
-  // Prepare tanks
   client->tanks = 2;
-  client->tank[0] = (tank_t) { PLAYER, UP, 128, 384, 1, 0, 0, 0, 0 };
-  client->tank[1] = (tank_t) { PLAYER, UP, 256, 384, 1, 0, 0, 0, 0 };
+  client->tank[0] = (tank_t) { PLAYER, UP, 128, 384, 1, 0, 0, 0, 0, 0, -1 };
+  client->tank[1] = (tank_t) { PLAYER, UP, 256, 384, 1, 0, 0, 0, 0, 0, -1 };
+  for(i = 2; i < TANKS; i++) {
+    client->tank[i].null = 1;
+    client->tank[i].destrBlock = -1;
+  }
 
   return 0;
 }
