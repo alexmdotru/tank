@@ -9,6 +9,7 @@
 void acceptConnection(server_t *server);
 void serverLoop(server_t *server);
 void spawnEnemy(server_t *server);
+void updateMap(map_t *map, tank_t *tank);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -57,17 +58,17 @@ void acceptConnection(server_t *server) {
 }
 
 void serverLoop(server_t *server) {
-  uint8_t i;
+  uint8_t i, j;
 
   // Server is running
   server->serverRunning = 1;
 
   // No players
   server->playerID = 0;
-  server->enemies = 0;
   for(i = 2; i < TANKS; i++) {
     server->tank[i].null = 1;
   }
+  server->enemies = 0;
   server->enemiesDelay = 0;
 
   // Load map
@@ -95,9 +96,23 @@ void serverLoop(server_t *server) {
         if(!server->tank[i].null) {
           updateEnemyTank(&server->tank[i], server->map);
           moveTank(&server->tank[i]);
+          updateFire(&server->tank[i], server->map);
         }
         sendTankStruct(&server->tank[i], server->cSocket[0]);
         sendTankStruct(&server->tank[i], server->cSocket[1]);
+      }
+
+      // Update players
+      for(i = 0; i < 2; i++) {
+        recvTankStruct(&server->tank[i], server->cSocket[i]);
+      }
+      for(i = 0, j = 1; i < 2; i++, j--) {
+        sendTankStruct(&server->tank[i], server->cSocket[j]);
+      }
+
+      // Destroy map blocks
+      for(i = 0; i < TANKS; i++) {
+        updateMap(server->map, &server->tank[i]);
       }
     }
     else {
