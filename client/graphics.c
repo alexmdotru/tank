@@ -100,6 +100,8 @@ SDL_Surface *pngToSurface(char *file) {
     fprintf(stderr, "IMG_Load Error: %s\n", IMG_GetError());
   }
 
+  // SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, 0, 0, 0));
+
   return surface;
 }
 
@@ -183,6 +185,9 @@ void renderMenu(client_t *client) {
 void render(client_t *client) {
   graphics_t *graphics = client->graphics;
 
+  // Set blend mode
+  // SDL_SetRenderDrawBlendMode(graphics->renderer, SDL_BLENDMODE_BLEND);
+
   // Clear render
   SDL_RenderClear(graphics->renderer);
 
@@ -197,7 +202,7 @@ void render(client_t *client) {
   SDL_RenderSetViewport(graphics->renderer, &graphics->mapView);
 
   // Render map
-  size_t i, j, k;
+  uint32_t i, j, k;
   int x = 0, y = 0;
   for(i = 0; i < MAP_SIZE; i++, y += 16, x = 0) {
     for(j = 0; j < MAP_SIZE; j++, x += 16) {
@@ -230,21 +235,27 @@ void render(client_t *client) {
   for(k = 0; k < 2; k++) {
     renderTexture(graphics->tank[k][graphics->tankAnim[k]], client->tank[k].posX+1,
     client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
-    // if(client->tank[k]->isFiring) {
-    //   renderTexture(graphics->fire, client->tank[k]->shot.posX + 7, client->tank[k]->shot.posY,
-    //   2, 2, client->tank[k]->direction, graphics->renderer);
-    // }
-    // if(client->tank[k]->shot.explodes) {
-    //   renderTexture(graphics->explosion[client->tank[k]->shot.explosionAnim],
-    //   client->tank[k]->shot.posX, client->tank[k]->shot.posY,
-    //   2, 2, client->tank[k]->direction, graphics->renderer);
   }
 
   for(k = 2; k < TANKS; k++) {
     if(!client->tank[k].null) {
-      fprintf(stderr, "TANK X %d Y %d LOL\n", client->tank[k].posX, client->tank[k].posY);
       renderTexture(graphics->tank[2][graphics->tankAnim[k]], client->tank[k].posX+1,
       client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
+    }
+  }
+
+  // Render fire
+  for(k = 0; k < TANKS; k++) {
+    if(!client->tank[k].null) {
+      if(client->tank[k].isFiring) {
+        renderTexture(graphics->fire, client->tank[k].fire.posX + 7, client->tank[k].fire.posY,
+        2, 2, client->tank[k].fire.direction, graphics->renderer);
+      }
+      else if(client->tank[k].fire.explodes) {
+        renderTexture(graphics->explosion[client->tank[k].fire.explosionAnim],
+        client->tank[k].fire.posX, client->tank[k].fire.posY,
+        2, 2, client->tank[k].fire.direction, graphics->renderer);
+      }
     }
   }
 
