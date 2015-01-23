@@ -61,6 +61,14 @@ void updatePlayerTank(client_t *client) {
       tank->isOnTheWay = 1;
     }
   }
+
+  if(!tank->isFiring && client->keyPressed[KEY_SPACE]) {
+    tank->isFiring = 1;
+    tank->fire.posX = (tank->posX / 16) * 16;
+    tank->fire.posY = (tank->posY / 16) * 16;
+    tank->fire.direction = tank->direction;
+    client->keyPressed[KEY_SPACE] = 0;
+  }
 }
 
 void moveTank(tank_t *tank) {
@@ -94,41 +102,134 @@ void moveTank(tank_t *tank) {
 }
 
 void updateEnemyTank(tank_t *tank, map_t *map) {
-  uint8_t i, change;
+  uint8_t change;
 
-  for(i = 2; i < 3; i++) {
-    if(!tank->isOnTheWay) {
-      // Do we want to change? 10%.
-      change = rand() % 10;
+  if(!tank->isOnTheWay) {
+    // Do we want to change? 1%.
+    change = rand() % 100;
 
-      if(!change) {
-        // Choose new direction
-        change = rand() % 4;
+    if(!change) {
+      // Choose new direction
+      change = rand() % 4;
 
-        switch(change) {
-          case 0:
-          tank->direction = UP;
-          break;
+      switch(change) {
+        case 0:
+        tank->direction = UP;
+        break;
 
-          case 1:
-          tank->direction = DOWN;
-          break;
+        case 1:
+        tank->direction = DOWN;
+        break;
 
-          case 2:
-          tank->direction = LEFT;
-          break;
+        case 2:
+        tank->direction = LEFT;
+        break;
 
-          case 3:
-          tank->direction = RIGHT;
-          break;
-        }
-      }
-      tank->isMoving = 1;
-      if(!checkCollision(tank, map)) {
-        tank->isOnTheWay = 1;
+        case 3:
+        tank->direction = RIGHT;
+        break;
       }
     }
+
+    if(!checkCollision(tank, map)) {
+      tank->isOnTheWay = 1;
+    }
   }
+
+  // Do we want to shoot?
+  if(!tank->isFiring) {
+    change = rand() % 50;
+    if(!change) {
+      tank->isFiring = 1;
+      tank->fire.posX = (tank->posX / 16) * 16;
+      tank->fire.posY = (tank->posY / 16) * 16;
+      tank->fire.direction = tank->direction;
+    }
+  }
+}
+
+void updateFire(tank_t *tank, map_t *map) {
+  if(tank->isFiring) {
+    // Calculate fire position
+    size_t blockX, blockY;
+    blockX = tank->fire.posX / 16;
+    blockY = tank->fire.posY / 16;
+
+    switch(tank->fire.direction) {
+      case UP:
+      if(tank->fire.posY < 16) {
+        tank->fire.posY = -16;
+        tank->isFiring = 0;
+        tank->fire.explodes = 1;
+      }
+      else if(tank->fire.posY % 16 == 0) {
+        if(map->block[blockY-1][blockX+1].material == BRICK) {
+          destroyBlock(tank, blockY-1, blockX+1);
+        }
+        else if(map->block[blockY-1][blockX].material == BRICK) {
+          destroyBlock(tank, blockY-1, blockX);
+        }
+      }
+      tank->fire.posY -= 4 * tank->velocity;
+      break;
+
+      case DOWN:
+      if(tank->fire.posY >= 384) {
+        tank->fire.posY = 400;
+        tank->isFiring = 0;
+        tank->fire.explodes = 1;
+      }
+      else if(tank->fire.posY % 16 == 0) {
+        if(map->block[blockY+2][blockX].material == BRICK) {
+          destroyBlock(tank, blockY+2, blockX);
+        }
+        else if(map->block[blockY+2][blockX+1].material == BRICK) {
+          destroyBlock(tank, blockY+2, blockX+1);
+        }
+      }
+      tank->fire.posY += 4 * tank->velocity;
+      break;
+
+      case LEFT:
+      if(tank->fire.posX < 16) {
+        tank->fire.posX = -16;
+        tank->isFiring = 0;
+        tank->fire.explodes = 1;
+      }
+      else if(tank->fire.posX % 16 == 0) {
+        if(map->block[blockY][blockX-1].material == BRICK) {
+          destroyBlock(tank, blockY, blockX-1);
+        }
+        else if(map->block[blockY+1][blockX-1].material == BRICK) {
+          destroyBlock(tank, blockY+1, blockX-1);
+        }
+      }
+      tank->fire.posX -= 4 * tank->velocity;
+      break;
+
+      case RIGHT:
+      if(tank->fire.posX >= 384) {
+        tank->fire.posX = 400;
+        tank->isFiring = 0;
+        tank->fire.explodes = 1;
+      }
+      else if(tank->fire.posX % 16 == 0) {
+        if(map->block[blockY+1][blockX+2].material == BRICK) {
+          destroyBlock(tank, blockY+1, blockX+2);
+        }
+        else if(map->block[blockY][blockX+2].material == BRICK) {
+          destroyBlock(tank, blockY, blockX+2);
+        }
+      }
+      tank->fire.posX += 4 * tank->velocity;
+      break;
+    }
+  }
+}
+
+void destroyBlock(tank_t *tank, uint8_t i, uint8_t j) {
+  tank->destrBlock = (i * 26) + j;
+  tank->isFiring = 0;
 }
 
 int checkCollision(tank_t *tank, map_t *map) {
@@ -175,7 +276,7 @@ void spawnEnemy(server_t *server) {
 
     for(i = 2; i < TANKS; i++) {
       if(server->tank[i].null) {
-        server->tank[i] = (tank_t) { ENEMY, DOWN, x, y, 1, 0, 0, 0, 0 };
+        server->tank[i] = (tank_t) { ENEMY, DOWN, x, y, 1, 1, 1, 0, 0, 0 };
         server->enemies++;
         break;
       }
