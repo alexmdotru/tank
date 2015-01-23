@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "framework.h"
 #include "client.h"
+#include "map.h"
 
 TCPsocket openTCPSocket(char *host, int port) {
   IPaddress ip;
@@ -36,8 +37,14 @@ void sendTankStruct(tank_t *tank, TCPsocket socket) {
   SDLNet_TCP_Send(socket, &tank->posY, 4);
   // SDLNet_TCP_Send(&socket, &tank->velocity, 1);
   SDLNet_TCP_Send(socket, &tank->isMoving, 1);
+  SDLNet_TCP_Send(socket, &tank->isFiring, 1);
   // SDLNet_TCP_Send(&socket, &tank->isOnTheWay, 1);
   // SDLNet_TCP_Send(&socket, &tank->moveDelay, 4);
+  SDLNet_TCP_Send(socket, &tank->fire.posX, 4);
+  SDLNet_TCP_Send(socket, &tank->fire.posY, 4);
+  // SDLNet_TCP_Send(socket, &tank->fire.explodes, 1);
+  SDLNet_TCP_Send(socket, &tank->fire.direction, sizeof(direction_t));
+  SDLNet_TCP_Send(socket, &tank->destrBlock, 2);
 }
 
 void recvTankStruct(tank_t *tank, TCPsocket socket) {
@@ -58,6 +65,12 @@ void recvTankStruct(tank_t *tank, TCPsocket socket) {
   SDLNet_TCP_Recv(socket, &tank->posY, 4);
   // SDLNet_TCP_Send(&socket, &tank->velocity, 1);
   SDLNet_TCP_Recv(socket, &tank->isMoving, 1);
+  SDLNet_TCP_Recv(socket, &tank->isFiring, 1);
   // SDLNet_TCP_Send(&socket, &tank->isOnTheWay, 1);
   // SDLNet_TCP_Send(&socket, &tank->moveDelay, 4);
+  SDLNet_TCP_Recv(socket, &tank->fire.posX, 4);
+  SDLNet_TCP_Recv(socket, &tank->fire.posY, 4);
+  // SDLNet_TCP_Recv(socket, &tank->fire.explodes, 1);
+  SDLNet_TCP_Recv(socket, &tank->fire.direction, sizeof(direction_t));
+  SDLNet_TCP_Recv(socket, &tank->destrBlock, 2);
 }
