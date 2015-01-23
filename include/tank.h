@@ -17,11 +17,12 @@ typedef enum {
 } direction_t;
 
 typedef struct {
-  int posX;
-  int posY;
+  uint32_t posX;
+  uint32_t posY;
   uint8_t explodes;
   uint8_t explosionAnim;
-} shot_t;
+  direction_t direction;
+} fire_t;
 
 typedef struct {
   driver_t driver;
@@ -33,10 +34,13 @@ typedef struct {
   uint8_t isOnTheWay;
   uint32_t moveDelay;
   uint8_t isFiring;
-  shot_t shot;
   uint8_t null;
+  int16_t destrBlock;
+  fire_t fire;
 } tank_t;
 
 void updateEnemyTank(tank_t *tank, map_t *map);
 void moveTank(tank_t *tank);
 int checkCollision(tank_t *tank, map_t *map);
+void updateFire(tank_t *tank, map_t *map);
+void destroyBlock(tank_t *tank, uint8_t i, uint8_t j);
