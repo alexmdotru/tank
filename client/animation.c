@@ -41,16 +41,16 @@ int explosionAnimThread(void *data) {
   client_t *client = (client_t*)data;
 
   size_t i;
-  for(i = 0; i < client->tanks; i++) {
-    client->tank[i].shot.explosionAnim = 0;
+  for(i = 0; i < TANKS; i++) {
+    client->tank[i].fire.explosionAnim = 0;
   }
 
   while(1) {
-    for(i = 0; i < client->tanks; i++) {
-      if(client->tank[i].shot.explodes) {
-        if(++client->tank[i].shot.explosionAnim == 3) {
-          client->tank[i].shot.explosionAnim = 0;
-          client->tank[i].shot.explodes = 0;
+    for(i = 0; i < TANKS; i++) {
+      if(client->tank[i].fire.explodes) {
+        if(++client->tank[i].fire.explosionAnim == 3) {
+          client->tank[i].fire.explosionAnim = 0;
+          client->tank[i].fire.explodes = 0;
         }
       }
     }
