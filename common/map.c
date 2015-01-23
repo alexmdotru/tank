@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "map.h"
+#include "tank.h"
 
 map_t *loadMap(int level) {
   map_t *map;
@@ -55,4 +56,15 @@ map_t *loadMap(int level) {
   }
 
   return map;
+}
+
+void updateMap(map_t *map, tank_t *tank) {
+  if(!tank->null && tank->destrBlock >= 0) {
+    uint32_t i, j;
+    i = tank->destrBlock / 26;
+    j = tank->destrBlock % 26;
+    map->block[i][j].material = TERRA;
+    tank->fire.explodes = 1;
+    tank->destrBlock = -1;
+  }
 }
