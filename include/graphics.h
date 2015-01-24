@@ -4,6 +4,8 @@
 
 #define WINDOW_WIDTH  512
 #define WINDOW_HEIGHT 480
+#define BASE_X 192
+#define BASE_Y 384
 
 typedef struct {
   SDL_Texture *tex;
@@ -24,6 +26,10 @@ typedef struct {
   texture_t *lcout;
   texture_t *lw2nd;
   texture_t *lcned;
+  texture_t *victory;
+  texture_t *defeat;
+  texture_t *au1;
+  texture_t *au2;
   // Brick
   texture_t *brick;
   // Steel
@@ -37,8 +43,11 @@ typedef struct {
   // Fire
   texture_t *fire;
   // Explosion
-  texture_t *explosion[3];
-
+  texture_t *explosion[5];
+  uint8_t baseAnim;
+  uint32_t baseDelay;
+  // Base
+  texture_t *base[2];
   // Map viewport
   SDL_Rect mapView;
 } graphics_t;
