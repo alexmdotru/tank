@@ -55,6 +55,11 @@ map_t *loadMap(int level) {
     fprintf(stderr, "Error reading file %s\n", filename);
   }
 
+  map->block[24][12].material = BASE;
+  map->block[24][13].material = BASE;
+  map->block[25][12].material = BASE;
+  map->block[25][13].material = BASE;
+
   return map;
 }
 
@@ -64,7 +69,7 @@ void updateMap(map_t *map, tank_t *tank) {
     i = tank->destrBlock / 26;
     j = tank->destrBlock % 26;
     map->block[i][j].material = TERRA;
-    tank->fire.explodes = 1;
+
     tank->destrBlock = -1;
   }
 }

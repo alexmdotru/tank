@@ -7,7 +7,14 @@ typedef enum {
   BRICK,
   STEEL,
   GRASS,
-  WATER
+  WATER,
+  BASE,
+  TANK0 = 10,
+  TANK1 = 11,
+  TANK2 = 12,
+  TANK3 = 13,
+  TANK4 = 14,
+  TANK5 = 15,
 } material_t;
 
 typedef struct {
