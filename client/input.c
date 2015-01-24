@@ -7,7 +7,6 @@ void processInput(client_t *client) {
   while(SDL_PollEvent(&event)) {
     switch(event.type) {
       case SDL_QUIT:
-      client->isPlaying = 0;
       client->gameRunning = 0;
       break;
 
