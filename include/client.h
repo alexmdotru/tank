@@ -24,7 +24,7 @@ typedef enum {
 
 typedef struct {
   tank_t tank[6];
-  int keyPressed[5];
+  uint8_t keyPressed[5];
   // Tanks
   uint32_t tanks;
   // Server host and port
@@ -33,15 +33,18 @@ typedef struct {
   // Server socket
   TCPsocket socket;
   // Client status variables
-  int gameRunning;
-  int isInMainMenu;
-  int isPlaying;
+  uint8_t gameRunning;
+  uint8_t isInMainMenu;
+  uint8_t isPlaying;
+  uint8_t isGameOver;
   cstatus_t cstatus;
   // Player ID
-  int myPlayerID;
-  int hisPlayerID;
+  uint8_t myPlayerID;
+  uint8_t hisPlayerID;
   // Level map
-  int level;
+  uint8_t level;
+  uint8_t base;
+  int8_t winner;
   map_t *map;
   // Graphics
   graphics_t *graphics;
