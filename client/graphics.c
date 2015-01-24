@@ -39,10 +39,18 @@ void loadResources(client_t *client) {
   graphics->logo2 = loadLabel("2015", 64, COLOR_RED, graphics->renderer);
 
   // Connection labels
-  graphics->lcing = loadLabel("соединяю...", 16, COLOR_WHITE, graphics->renderer);
-  graphics->lcout = loadLabel("нет ответа", 16, COLOR_WHITE, graphics->renderer);
-  graphics->lw2nd = loadLabel("жду второго игрока...", 16, COLOR_WHITE, graphics->renderer);
-  graphics->lcned = loadLabel("игра начинается...", 16, COLOR_WHITE, graphics->renderer);
+  graphics->lcing = loadLabel("СОЕДИНЯЮ...", 16, COLOR_WHITE, graphics->renderer);
+  graphics->lcout = loadLabel("НЕТ ОТВЕТА", 16, COLOR_WHITE, graphics->renderer);
+  graphics->lw2nd = loadLabel("ЖДУ ВТОРОГО ИГРОКА...", 16, COLOR_WHITE, graphics->renderer);
+  graphics->lcned = loadLabel("ИГРА НАЧИНАЕТСЯ...", 16, COLOR_WHITE, graphics->renderer);
+
+  // Author labels
+  graphics->au1 = loadLabel("(c) 2015 ВЛАДИСЛАВ Т", 16, COLOR_WHITE, graphics->renderer);
+  graphics->au2 = loadLabel("АЛЛ РИГХТС РЕСЕРВЕД", 16, COLOR_WHITE, graphics->renderer);
+
+  // Game over labels
+  graphics->victory = loadLabel("ПОБЕДА", 64, COLOR_RED, graphics->renderer);
+  graphics->defeat = loadLabel("ПОРАЖЕНИЕ", 52, COLOR_RED, graphics->renderer);
 
   // Load textures bank
   graphics->textures = pngToSurface("../../resources/textures.png");
@@ -76,6 +84,12 @@ void loadResources(client_t *client) {
   graphics->explosion[0] = loadTexture(graphics->textures, 256, 128, 16, 16, graphics->renderer);
   graphics->explosion[1] = loadTexture(graphics->textures, 272, 128, 16, 16, graphics->renderer);
   graphics->explosion[2] = loadTexture(graphics->textures, 288, 128, 16, 16, graphics->renderer);
+  graphics->explosion[3] = loadTexture(graphics->textures, 304, 128, 32, 32, graphics->renderer);
+  graphics->explosion[4] = loadTexture(graphics->textures, 336, 128, 32, 32, graphics->renderer);
+
+  // Load base texture
+  graphics->base[0] = loadTexture(graphics->textures, 304,  32, 16, 16, graphics->renderer);
+  graphics->base[1] = loadTexture(graphics->textures, 320,  32, 16, 16, graphics->renderer);
 
   // Animation threads
   SDL_Thread *waterAnimT;
@@ -86,6 +100,9 @@ void loadResources(client_t *client) {
 
   SDL_Thread *explosionAnimT;
   explosionAnimT = SDL_CreateThread(explosionAnimThread, "explosionAnimT", (void*)client);
+
+  graphics->baseAnim = -1;
+  graphics->baseDelay = 0;
 }
 
 void freeResources(graphics_t *graphics) {
@@ -100,7 +117,7 @@ SDL_Surface *pngToSurface(char *file) {
     fprintf(stderr, "IMG_Load Error: %s\n", IMG_GetError());
   }
 
-  // SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, 0, 0, 0));
+  // SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, 3, 3, 3));
 
   return surface;
 }
@@ -178,15 +195,33 @@ void renderMenu(client_t *client) {
     renderTexture(graphics->lcned, 112, 256, 1, 1, 0.0, graphics->renderer); break;
   }
 
+  // Render author labels
+  renderTexture(graphics->au1,  96, 400, 1, 1, 0.0, graphics->renderer);
+  renderTexture(graphics->au2, 104, 432, 1, 1, 0.0, graphics->renderer);
+
+  // Update render
+  SDL_RenderPresent(graphics->renderer);
+}
+
+void renderOver(client_t *client) {
+  graphics_t *graphics = client->graphics;
+
+  // Clear render
+  SDL_RenderClear(graphics->renderer);
+
+  // Render result
+  if(client->winner >= 0)
+    renderTexture(graphics->defeat, 26, 128, 1, 1, 0.0, graphics->renderer);
+  else
+    renderTexture(graphics->victory, 88, 64, 1, 1, 0.0, graphics->renderer);
+
+
   // Update render
   SDL_RenderPresent(graphics->renderer);
 }
 
 void render(client_t *client) {
   graphics_t *graphics = client->graphics;
-
-  // Set blend mode
-  // SDL_SetRenderDrawBlendMode(graphics->renderer, SDL_BLENDMODE_BLEND);
 
   // Clear render
   SDL_RenderClear(graphics->renderer);
@@ -227,6 +262,10 @@ void render(client_t *client) {
         case WATER:
         renderTexture(graphics->water[graphics->waterAnim], x, y, 2, 2, 0.0, graphics->renderer);
         break;
+
+        default:
+        SDL_RenderFillRect(graphics->renderer, &rect);
+        break;
       }
     }
   }
@@ -252,12 +291,50 @@ void render(client_t *client) {
         2, 2, client->tank[k].fire.direction, graphics->renderer);
       }
       else if(client->tank[k].fire.explodes) {
+        uint32_t x, y, direction;
+        x = client->tank[k].fire.posX;
+        y = client->tank[k].fire.posY;
+        direction = client->tank[k].fire.direction;
+        switch(direction) {
+          case UP:
+          y -= 16;
+          break;
+
+          case DOWN:
+          y += 16;
+          break;
+
+          case LEFT:
+          x -= 16;
+          break;
+
+          case RIGHT:
+          x += 16;
+          break;
+        }
         renderTexture(graphics->explosion[client->tank[k].fire.explosionAnim],
-        client->tank[k].fire.posX, client->tank[k].fire.posY,
-        2, 2, client->tank[k].fire.direction, graphics->renderer);
+        x, y, 2, 2, direction, graphics->renderer);
       }
     }
   }
+
+  // Render base
+  if(client->base == 2) {
+    if(SDL_GetTicks() > graphics->baseDelay) {
+      if(++graphics->baseAnim == 5) {
+        client->base = 1;
+      }
+      graphics->baseDelay = SDL_GetTicks() + 50;
+    }
+
+    if(graphics->baseAnim < 5) {
+      if(graphics->baseAnim < 3)
+        renderTexture(graphics->explosion[graphics->baseAnim], BASE_X, BASE_Y, 2, 2, 0, graphics->renderer);
+      else
+        renderTexture(graphics->explosion[graphics->baseAnim], BASE_X - 16, BASE_Y - 16, 2, 2, 0, graphics->renderer);
+    }
+  }
+  else renderTexture(graphics->base[client->base], BASE_X, BASE_Y, 2, 2, 0, graphics->renderer);
 
   // Restore viewport
   SDL_RenderSetViewport(graphics->renderer, NULL);
