@@ -10,6 +10,7 @@ void acceptConnection(server_t *server);
 void serverLoop(server_t *server);
 void spawnEnemy(server_t *server);
 void updateMap(map_t *map, tank_t *tank);
+int explosionThread(void *data);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -95,16 +96,24 @@ void serverLoop(server_t *server) {
       for(i = 2; i < TANKS; i++) {
         if(!server->tank[i].null) {
           updateEnemyTank(&server->tank[i], server->map);
-          moveTank(&server->tank[i]);
+          moveTank(&server->tank[i], server->map);
           updateFire(&server->tank[i], server->map);
+          if(server->tank[i].fire.explodes) {
+            SDL_Thread *explosionT;
+            explosionT = SDL_CreateThread(explosionThread, "explosionT", (void*)&server->tank[i]);
+          }
         }
         sendTankStruct(&server->tank[i], server->cSocket[0]);
         sendTankStruct(&server->tank[i], server->cSocket[1]);
+        if(server->tank[i].winsTheGame) {
+          server->tank[i].winsTheGame = 0;
+        }
       }
 
       // Update players
       for(i = 0; i < 2; i++) {
         recvTankStruct(&server->tank[i], server->cSocket[i]);
+        updateTanksOnMap(&server->tank[i], server->map);
       }
       for(i = 0, j = 1; i < 2; i++, j--) {
         sendTankStruct(&server->tank[i], server->cSocket[j]);
@@ -119,4 +128,15 @@ void serverLoop(server_t *server) {
       acceptConnection(server);
     }
   }
+}
+
+int explosionThread(void *data) {
+  tank_t *tank = (tank_t*)data;
+
+  // Animation speed
+  SDL_Delay(150);
+
+  tank->fire.explodes = 0;
+
+  return 0;
 }
