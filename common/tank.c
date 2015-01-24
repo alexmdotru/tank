@@ -59,19 +59,17 @@ void updatePlayerTank(client_t *client) {
 
     if(tank->isMoving && !checkCollision(tank, map)) {
       tank->isOnTheWay = 1;
+      updateTankOnMap(tank, map);
     }
   }
 
-  if(!tank->isFiring && client->keyPressed[KEY_SPACE]) {
-    tank->isFiring = 1;
-    tank->fire.posX = (tank->posX / 16) * 16;
-    tank->fire.posY = (tank->posY / 16) * 16;
-    tank->fire.direction = tank->direction;
+  if(client->keyPressed[KEY_SPACE]) {
+    fire(tank);
     client->keyPressed[KEY_SPACE] = 0;
   }
 }
 
-void moveTank(tank_t *tank) {
+void moveTank(tank_t *tank, map_t *map) {
   if(tank->isOnTheWay) {
     if(SDL_GetTicks() > tank->moveDelay) {
       switch(tank->direction) {
@@ -101,125 +99,133 @@ void moveTank(tank_t *tank) {
   }
 }
 
+void fire(tank_t *tank) {
+  if(!tank->isFiring && !tank->fire.explodes) {
+    tank->isFiring = 1;
+    tank->fire.posX = (tank->posX / 16) * 16;
+    tank->fire.posY = (tank->posY / 16) * 16;
+    tank->fire.direction = tank->direction;
+  }
+}
+
 void updateEnemyTank(tank_t *tank, map_t *map) {
-  uint8_t change;
+  uint8_t change, doNotChange = 0;
 
   if(!tank->isOnTheWay) {
     // Do we want to change? 1%.
     change = rand() % 100;
 
+    // We do need to change, if there is a collision
+    if(checkCollision(tank, map) == 2) {
+      change = 1;
+      fire(tank);
+    }
+    else if(checkCollision(tank, map)) {
+      change = 0;
+    }
+
     if(!change) {
-      // Choose new direction
-      change = rand() % 4;
+      // Need to go DOWN to the base
+      if(tank->direction == DOWN) {
+        if(!checkCollision(tank, map)) {
+          doNotChange = 1;
+        }
+        else if(checkCollision(tank, map) == 2) {
+          // It's a brick, fire!
+          doNotChange = 1;
+          fire(tank);
+        }
+      }
 
-      switch(change) {
-        case 0:
-        tank->direction = UP;
-        break;
+      if(!doNotChange) {
+        // Choose new direction
+        change = rand() % 4;
 
-        case 1:
-        tank->direction = DOWN;
-        break;
+        switch(change) {
+          case 0:
+          tank->direction = UP;
+          break;
 
-        case 2:
-        tank->direction = LEFT;
-        break;
+          case 1:
+          tank->direction = DOWN;
+          break;
 
-        case 3:
-        tank->direction = RIGHT;
-        break;
+          case 2:
+          tank->direction = LEFT;
+          break;
+
+          case 3:
+          tank->direction = RIGHT;
+          break;
+        }
       }
     }
 
     if(!checkCollision(tank, map)) {
       tank->isOnTheWay = 1;
+      updateTankOnMap(tank, map);
     }
   }
 
   // Do we want to shoot?
-  if(!tank->isFiring) {
-    change = rand() % 50;
-    if(!change) {
-      tank->isFiring = 1;
-      tank->fire.posX = (tank->posX / 16) * 16;
-      tank->fire.posY = (tank->posY / 16) * 16;
-      tank->fire.direction = tank->direction;
-    }
-  }
+  change = rand() % 50;
+  if(!change) fire(tank);
 }
 
 void updateFire(tank_t *tank, map_t *map) {
   if(tank->isFiring) {
     // Calculate fire position
-    size_t blockX, blockY;
+    uint32_t blockX, blockY;
     blockX = tank->fire.posX / 16;
     blockY = tank->fire.posY / 16;
 
     switch(tank->fire.direction) {
       case UP:
       if(tank->fire.posY < 16) {
-        tank->fire.posY = -16;
+        tank->fire.posY = 0;
         tank->isFiring = 0;
         tank->fire.explodes = 1;
       }
       else if(tank->fire.posY % 16 == 0) {
-        if(map->block[blockY-1][blockX+1].material == BRICK) {
-          destroyBlock(tank, blockY-1, blockX+1);
-        }
-        else if(map->block[blockY-1][blockX].material == BRICK) {
-          destroyBlock(tank, blockY-1, blockX);
-        }
+        if(!checkBlock(blockY-1, blockX+1, tank, map))
+          checkBlock(blockY-1, blockX, tank, map);
       }
       tank->fire.posY -= 4 * tank->velocity;
       break;
 
       case DOWN:
       if(tank->fire.posY >= 384) {
-        tank->fire.posY = 400;
         tank->isFiring = 0;
         tank->fire.explodes = 1;
       }
       else if(tank->fire.posY % 16 == 0) {
-        if(map->block[blockY+2][blockX].material == BRICK) {
-          destroyBlock(tank, blockY+2, blockX);
-        }
-        else if(map->block[blockY+2][blockX+1].material == BRICK) {
-          destroyBlock(tank, blockY+2, blockX+1);
-        }
+        if(!checkBlock(blockY+2, blockX, tank, map))
+          checkBlock(blockY+2, blockX+1, tank, map);
       }
       tank->fire.posY += 4 * tank->velocity;
       break;
 
       case LEFT:
       if(tank->fire.posX < 16) {
-        tank->fire.posX = -16;
+        tank->fire.posX = 0;
         tank->isFiring = 0;
         tank->fire.explodes = 1;
       }
       else if(tank->fire.posX % 16 == 0) {
-        if(map->block[blockY][blockX-1].material == BRICK) {
-          destroyBlock(tank, blockY, blockX-1);
-        }
-        else if(map->block[blockY+1][blockX-1].material == BRICK) {
-          destroyBlock(tank, blockY+1, blockX-1);
-        }
+        if(!checkBlock(blockY, blockX-1, tank, map))
+          checkBlock(blockY+1, blockX-1, tank, map);
       }
       tank->fire.posX -= 4 * tank->velocity;
       break;
 
       case RIGHT:
       if(tank->fire.posX >= 384) {
-        tank->fire.posX = 400;
         tank->isFiring = 0;
         tank->fire.explodes = 1;
       }
       else if(tank->fire.posX % 16 == 0) {
-        if(map->block[blockY+1][blockX+2].material == BRICK) {
-          destroyBlock(tank, blockY+1, blockX+2);
-        }
-        else if(map->block[blockY][blockX+2].material == BRICK) {
-          destroyBlock(tank, blockY, blockX+2);
-        }
+        if(!checkBlock(blockY+1, blockX+2, tank, map))
+          checkBlock(blockY, blockX+2, tank, map);
       }
       tank->fire.posX += 4 * tank->velocity;
       break;
@@ -227,9 +233,32 @@ void updateFire(tank_t *tank, map_t *map) {
   }
 }
 
-void destroyBlock(tank_t *tank, uint8_t i, uint8_t j) {
-  tank->destrBlock = (i * 26) + j;
-  tank->isFiring = 0;
+int checkBlock(uint32_t i, uint32_t j, tank_t *tank, map_t *map) {
+  if(map->block[i][j].material == BRICK) {
+    tank->destrBlock = (i * 26) + j;
+    tank->isFiring = 0;
+    tank->fire.explodes = 1;
+    return 1;
+  }
+
+  if(map->block[i][j].material == STEEL || map->block[i][j].material == STEEL) {
+    tank->isFiring = 0;
+    tank->fire.explodes = 1;
+    return 1;
+  }
+
+  if(map->block[i][j].material == BASE) {
+    map->block[24][12].material = STEEL;
+    map->block[24][13].material = STEEL;
+    map->block[25][12].material = STEEL;
+    map->block[25][13].material = STEEL;
+    fprintf(stderr, "Game over!\n");
+    tank->isFiring = 0;
+    tank->winsTheGame = 1;
+    return 1;
+  }
+
+  return 0;
 }
 
 int checkCollision(tank_t *tank, map_t *map) {
@@ -241,12 +270,16 @@ int checkCollision(tank_t *tank, map_t *map) {
   switch(tank->direction) {
     case UP:
     if(tank->posY == 0) return 1;
+    if(map->block[y-1][x].material   == BRICK) return 2;
+    if(map->block[y-1][x+1].material == BRICK) return 2;
     if(map->block[y-1][x].material   != TERRA) return 1;
     if(map->block[y-1][x+1].material != TERRA) return 1;
     break;
 
     case DOWN:
     if(tank->posY == 384) return 1;
+    if(map->block[y+2][x].material   == BRICK) return 2;
+    if(map->block[y+2][x+1].material == BRICK) return 2;
     if(map->block[y+2][x].material   != TERRA) return 1;
     if(map->block[y+2][x+1].material != TERRA) return 1;
     break;
@@ -276,14 +309,14 @@ void spawnEnemy(server_t *server) {
 
     for(i = 2; i < TANKS; i++) {
       if(server->tank[i].null) {
-        server->tank[i] = (tank_t) { ENEMY, DOWN, x, y, 1, 1, 1, 0, 0, 0 };
+        server->tank[i] = (tank_t) { ENEMY, DOWN, x, y, 1, 1, 1, 0, 0, 0, -1, i, 0 };
         server->enemies++;
         break;
       }
     }
 
     server->enemiesDelay = SDL_GetTicks() + 3000;
-    fprintf(stderr, "Spawned enemy id %d at x: %d y: %d.\n", i, x, y);
+    fprintf(stderr, "Spawned Enemy %d at X %d Y %d\n", i, x, y);
   }
 }
 
@@ -304,4 +337,58 @@ void randomizeSpawn(uint32_t *x, uint32_t *y) {
     *x = 384; *y = 0;
     break;
   }
+}
+
+void updateTankOnMap(tank_t *tank, map_t *map) {
+  uint8_t i, j;
+
+  for(i = 0; i < MAP_SIZE; i++) {
+    for(j = 0; j < MAP_SIZE; j++) {
+      if(map->block[i][j].material == tank->id + 10) {
+        map->block[i][j].material = TERRA;
+      }
+    }
+  }
+
+  // Calculate tank position
+  uint32_t x, y;
+  x = tank->posX / 16;
+  y = tank->posY / 16;
+
+  if(tank->isOnTheWay) {
+    switch(tank->direction) {
+      case UP:    y -= 1; break;
+      case DOWN:  y += 1; break;
+      case LEFT:  x -= 1; break;
+      case RIGHT: x += 1; break;
+    }
+  }
+  tank->block[0] = x;
+  tank->block[1] = y;
+
+  map->block[y][x].material = tank->id + 10;
+  map->block[y][x+1].material = tank->id + 10;
+  map->block[y+1][x].material = tank->id + 10;
+  map->block[y+1][x+1].material = tank->id + 10;
+}
+
+void updateTanksOnMap(tank_t *tank, map_t *map) {
+  uint8_t i, j;
+
+  for(i = 0; i < MAP_SIZE; i++) {
+    for(j = 0; j < MAP_SIZE; j++) {
+      if(map->block[i][j].material == tank->id + 10) {
+        map->block[i][j].material = TERRA;
+      }
+    }
+  }
+
+  uint32_t x, y;
+  x = tank->block[0];
+  y = tank->block[1];
+
+  map->block[y][x].material = tank->id + 10;
+  map->block[y][x+1].material = tank->id + 10;
+  map->block[y+1][x].material = tank->id + 10;
+  map->block[y+1][x+1].material = tank->id + 10;
 }
