@@ -36,11 +36,17 @@ typedef struct {
   uint8_t isFiring;
   uint8_t null;
   int16_t destrBlock;
+  uint8_t id;
+  uint8_t winsTheGame;
   fire_t fire;
+  uint8_t block[2];
 } tank_t;
 
 void updateEnemyTank(tank_t *tank, map_t *map);
-void moveTank(tank_t *tank);
+void moveTank(tank_t *tank, map_t *map);
 int checkCollision(tank_t *tank, map_t *map);
 void updateFire(tank_t *tank, map_t *map);
-void destroyBlock(tank_t *tank, uint8_t i, uint8_t j);
+void updateTankOnMap(tank_t *tank, map_t *map);
+void updateTanksOnMap(tank_t *tank, map_t *map);
+int checkBlock(uint32_t i, uint32_t j, tank_t *tank, map_t *map);
+void fire(tank_t *tank);
