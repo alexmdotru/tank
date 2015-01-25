@@ -109,55 +109,47 @@ void fire(tank_t *tank) {
 }
 
 void updateEnemyTank(tank_t *tank, map_t *map) {
-  uint8_t change, doNotChange = 0;
+  // 0 — don't know
+  // 1 — change
+  // 2 - don't change
+  uint8_t change = 0, random;
 
   if(!tank->isOnTheWay) {
-    // Do we want to change? 1%.
-    change = rand() % 100;
-
-    // We do need to change, if there is a collision
-    if(checkCollision(tank, map) == 2) {
-      change = 1;
-      fire(tank);
-    }
-    else if(checkCollision(tank, map)) {
-      change = 0;
-    }
-
-    if(!change) {
-      // Need to go DOWN to the base
-      if(tank->direction == DOWN) {
-        if(!checkCollision(tank, map)) {
-          doNotChange = 1;
-        }
-        else if(checkCollision(tank, map) == 2) {
-          // It's a brick, fire!
-          doNotChange = 1;
-          fire(tank);
-        }
+    // Go DOWN to the BASE
+    if(tank->direction == DOWN) {
+      if(checkCollision(tank, map) == BRICK || !checkCollision(tank, map)) {
+        change = 2;
       }
+    }
 
-      if(!doNotChange) {
-        // Choose new direction
-        change = rand() % 4;
+    // Change if the collision is detected (not a BRICK)
+    if(checkCollision(tank, map) && checkCollision(tank, map) != BRICK) {
+      change = 1;
+    }
 
-        switch(change) {
-          case 0:
-          tank->direction = UP;
-          break;
+    // Decide if we need to change
+    random = rand() % 100;
 
-          case 1:
-          tank->direction = DOWN;
-          break;
+    if(change == 1 || (change == 0 && !random)) {
+      // Choose new direction
+      random = rand() % 4;
 
-          case 2:
-          tank->direction = LEFT;
-          break;
+      switch(random) {
+        case 0:
+        tank->direction = UP;
+        break;
 
-          case 3:
-          tank->direction = RIGHT;
-          break;
-        }
+        case 1:
+        tank->direction = DOWN;
+        break;
+
+        case 2:
+        tank->direction = LEFT;
+        break;
+
+        case 3:
+        tank->direction = RIGHT;
+        break;
       }
     }
 
@@ -168,8 +160,8 @@ void updateEnemyTank(tank_t *tank, map_t *map) {
   }
 
   // Do we want to shoot?
-  change = rand() % 50;
-  if(!change) fire(tank);
+  random = rand() % 25;
+  if(!random) fire(tank);
 }
 
 void updateFire(tank_t *tank, map_t *map) {
@@ -265,6 +257,13 @@ int checkBlock(uint32_t i, uint32_t j, tank_t *tank, map_t *map) {
     return 1;
   }
 
+  if(tank->driver == ENEMY && (map->block[i][j].material == TANK0 || map->block[i][j].material == TANK1)) {
+    tank->destrTank = map->block[i][j].material - 10;
+    tank->isFiring = 0;
+    fprintf(stderr, "Player %d destroyed!\n", tank->destrTank + 1);
+    return 1;
+  }
+
   return 0;
 }
 
@@ -277,28 +276,32 @@ int checkCollision(tank_t *tank, map_t *map) {
   switch(tank->direction) {
     case UP:
     if(tank->posY == 0) return 1;
-    if(map->block[y-1][x].material   == BRICK) return 2;
-    if(map->block[y-1][x+1].material == BRICK) return 2;
+    if(map->block[y-1][x].material   == BRICK) return BRICK;
+    if(map->block[y-1][x+1].material == BRICK) return BRICK;
     if(map->block[y-1][x].material   != TERRA) return 1;
     if(map->block[y-1][x+1].material != TERRA) return 1;
     break;
 
     case DOWN:
     if(tank->posY == 384) return 1;
-    if(map->block[y+2][x].material   == BRICK) return 2;
-    if(map->block[y+2][x+1].material == BRICK) return 2;
+    if(map->block[y+2][x].material   == BRICK) return BRICK;
+    if(map->block[y+2][x+1].material == BRICK) return BRICK;
     if(map->block[y+2][x].material   != TERRA) return 1;
     if(map->block[y+2][x+1].material != TERRA) return 1;
     break;
 
     case LEFT:
     if(tank->posX == 0) return 1;
+    if(map->block[y][x-1].material   == BRICK) return BRICK;
+    if(map->block[y+1][x-1].material == BRICK) return BRICK;
     if(map->block[y][x-1].material   != TERRA) return 1;
     if(map->block[y+1][x-1].material != TERRA) return 1;
     break;
 
     case RIGHT:
     if(tank->posX == 384) return 1;
+    if(map->block[y][x+2].material   != TERRA) return BRICK;
+    if(map->block[y+1][x+2].material != TERRA) return BRICK;
     if(map->block[y][x+2].material   != TERRA) return 1;
     if(map->block[y+1][x+2].material != TERRA) return 1;
     break;
