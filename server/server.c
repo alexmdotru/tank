@@ -16,7 +16,7 @@ int tankExplosionThread(void *data);
 int main(int argc, char **argv) {
   // Check command line
   if(argc != 3) {
-    fprintf(stderr, "usage:\t%s port level\n", argv[0]);
+    fprintf(stderr, "usage:\ttanks port level\n");
     exit(EXIT_FAILURE);
   }
 
@@ -108,12 +108,14 @@ void serverLoop(server_t *server) {
         sendTankStruct(&server->tank[i], server->cSocket[0]);
         sendTankStruct(&server->tank[i], server->cSocket[1]);
         server->tank[i].destroyedBase = 0;
+        server->tank[i].destrTank = -1;
       }
 
       // Update players
       for(i = 0; i < 2; i++) {
         recvTankStruct(&server->tank[i], server->cSocket[i]);
         updateTanksOnMap(&server->tank[i], server->map);
+        if(server->tank[i].null) freeMapFromTank(i, server->map);
       }
       for(i = 0, j = 1; i < 2; i++, j--) {
         sendTankStruct(&server->tank[i], server->cSocket[j]);
