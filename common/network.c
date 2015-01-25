@@ -42,13 +42,14 @@ void sendTankStruct(tank_t *tank, TCPsocket socket) {
   SDLNet_TCP_Send(socket, &tank->null, 1);
   SDLNet_TCP_Send(socket, &tank->destrBlock, 2);
   SDLNet_TCP_Send(socket, &tank->id, 2);
-  SDLNet_TCP_Send(socket, &tank->winsTheGame, 1);
+  SDLNet_TCP_Send(socket, &tank->destroyedBase, 1);
   SDLNet_TCP_Send(socket, &tank->fire.posX, 4);
   SDLNet_TCP_Send(socket, &tank->fire.posY, 4);
   SDLNet_TCP_Send(socket, &tank->fire.explodes, 1);
   SDLNet_TCP_Send(socket, &tank->fire.direction, sizeof(direction_t));
   SDLNet_TCP_Send(socket, &tank->block[0], 1);
   SDLNet_TCP_Send(socket, &tank->block[1], 1);
+  SDLNet_TCP_Send(socket, &tank->explodes, 1);
 }
 
 void recvTankStruct(tank_t *tank, TCPsocket socket) {
@@ -74,11 +75,28 @@ void recvTankStruct(tank_t *tank, TCPsocket socket) {
   SDLNet_TCP_Recv(socket, &tank->null, 1);
   SDLNet_TCP_Recv(socket, &tank->destrBlock, 2);
   SDLNet_TCP_Recv(socket, &tank->id, 2);
-  SDLNet_TCP_Recv(socket, &tank->winsTheGame, 1);
+  SDLNet_TCP_Recv(socket, &tank->destroyedBase, 1);
   SDLNet_TCP_Recv(socket, &tank->fire.posX, 4);
   SDLNet_TCP_Recv(socket, &tank->fire.posY, 4);
   SDLNet_TCP_Recv(socket, &tank->fire.explodes, 1);
   SDLNet_TCP_Recv(socket, &tank->fire.direction, sizeof(direction_t));
   SDLNet_TCP_Recv(socket, &tank->block[0], 1);
   SDLNet_TCP_Recv(socket, &tank->block[1], 1);
+  SDLNet_TCP_Recv(socket, &tank->explodes, 1);
+}
+
+void sendDestrUpdate(int8_t *id, TCPsocket socket) {
+  SDLNet_TCP_Send(socket, id, 1);
+}
+
+void recvDestrUpdate(int8_t *id, TCPsocket socket) {
+  SDLNet_TCP_Recv(socket, id, 1);
+}
+
+void sendEnemiesKilled(uint8_t *enemies, TCPsocket socket) {
+  SDLNet_TCP_Send(socket, enemies, 1);
+}
+
+void recvEnemiesKilled(uint8_t *enemies, TCPsocket socket) {
+  SDLNet_TCP_Recv(socket, enemies, 1);
 }
