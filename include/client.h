@@ -25,7 +25,8 @@ typedef enum {
 
 typedef enum {
   BASE_DESTROYED,
-  ENEMIES_KILLED
+  ENEMIES_KILLED,
+  PLAYERS_KILLED
 } result_t;
 
 typedef struct {
