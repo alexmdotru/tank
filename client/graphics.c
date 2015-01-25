@@ -117,8 +117,6 @@ SDL_Surface *pngToSurface(char *file) {
     fprintf(stderr, "IMG_Load Error: %s\n", IMG_GetError());
   }
 
-  // SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, 3, 3, 3));
-
   return surface;
 }
 
@@ -278,8 +276,25 @@ void render(client_t *client) {
 
   for(k = 2; k < TANKS; k++) {
     if(!client->tank[k].null) {
-      renderTexture(graphics->tank[2][graphics->tankAnim[k]], client->tank[k].posX+1,
-      client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
+      if(client->tank[k].explodes) {
+        if(client->tank[k].explAnim < 3)
+          renderTexture(graphics->explosion[client->tank[k].explAnim], client->tank[k].posX,
+          client->tank[k].posY, 2, 2, 0, graphics->renderer);
+        else
+          renderTexture(graphics->explosion[client->tank[k].explAnim], client->tank[k].posX - 16,
+          client->tank[k].posY - 16, 2, 2, 0, graphics->renderer);
+
+        if(SDL_GetTicks() > client->tank[k].explDelay) {
+          if(++client->tank[k].explAnim == 5) {
+            client->tank[k].explAnim = 0;
+            client->tank[k].explodes = 0;
+          }
+          client->tank[k].explDelay = SDL_GetTicks() + 60;
+        }
+      }
+      else
+        renderTexture(graphics->tank[2][graphics->tankAnim[k]], client->tank[k].posX+1,
+        client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
     }
   }
 
