@@ -32,6 +32,9 @@ typedef struct {
   texture_t *au2;
   texture_t *killed1;
   texture_t *killed2;
+  texture_t *killed3;
+  texture_t *killed4;
+  texture_t *killed5;
   // Brick
   texture_t *brick;
   // Steel
