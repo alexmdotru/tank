@@ -252,9 +252,16 @@ int checkBlock(uint32_t i, uint32_t j, tank_t *tank, map_t *map) {
     map->block[24][13].material = STEEL;
     map->block[25][12].material = STEEL;
     map->block[25][13].material = STEEL;
-    fprintf(stderr, "Game over!\n");
     tank->isFiring = 0;
-    tank->winsTheGame = 1;
+    tank->destroyedBase = 1;
+    fprintf(stderr, "Game over!\n");
+    return 1;
+  }
+
+  if(tank->driver == PLAYER && map->block[i][j].material >= TANK2) {
+    tank->destrTank = map->block[i][j].material - 10;
+    tank->isFiring = 0;
+    fprintf(stderr, "Enemy %d destroyed!\n", tank->destrTank);
     return 1;
   }
 
@@ -309,14 +316,12 @@ void spawnEnemy(server_t *server) {
 
     for(i = 2; i < TANKS; i++) {
       if(server->tank[i].null) {
-        server->tank[i] = (tank_t) { ENEMY, DOWN, x, y, 1, 1, 1, 0, 0, 0, -1, i, 0 };
-        server->enemies++;
+        server->tank[i] = (tank_t) { ENEMY, DOWN, x, y, 1, 1, 1, 0, 0, 0, -1, -1, i, 0, 0 };
+        fprintf(stderr, "Spawned Enemy %d at X %d Y %d\n", ++server->enemies, x, y);
         break;
       }
     }
-
     server->enemiesDelay = SDL_GetTicks() + 3000;
-    fprintf(stderr, "Spawned Enemy %d at X %d Y %d\n", i, x, y);
   }
 }
 
@@ -391,4 +396,16 @@ void updateTanksOnMap(tank_t *tank, map_t *map) {
   map->block[y][x+1].material = tank->id + 10;
   map->block[y+1][x].material = tank->id + 10;
   map->block[y+1][x+1].material = tank->id + 10;
+}
+
+void freeMapFromTank(uint8_t id, map_t *map) {
+  uint8_t i, j;
+
+  for(i = 0; i < MAP_SIZE; i++) {
+    for(j = 0; j < MAP_SIZE; j++) {
+      if(map->block[i][j].material == id + 10) {
+        map->block[i][j].material = TERRA;
+      }
+    }
+  }
 }
