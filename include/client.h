@@ -6,6 +6,7 @@
 #include "tank.h"
 
 #define KEYS 5
+#define ENEMIES 20
 
 typedef enum {
   CONNECTING,
@@ -22,9 +23,16 @@ typedef enum {
   KEY_SPACE
 } keys_t;
 
+typedef enum {
+  BASE_DESTROYED,
+  ENEMIES_KILLED
+} result_t;
+
 typedef struct {
   tank_t tank[6];
   uint8_t keyPressed[5];
+  result_t result;
+  uint8_t baseExplodes;
   // Tanks
   uint32_t tanks;
   // Server host and port
@@ -45,6 +53,7 @@ typedef struct {
   uint8_t level;
   uint8_t base;
   int8_t winner;
+  uint8_t enemiesKilled;
   map_t *map;
   // Graphics
   graphics_t *graphics;
