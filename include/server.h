@@ -4,7 +4,7 @@
 #include "tank.h"
 #include "map.h"
 
-#define ENEMIES 4
+#define ENEMIES 20
 
 typedef struct {
   // Server host and port
@@ -21,6 +21,7 @@ typedef struct {
   // Enemies
   uint8_t enemies;
   uint32_t enemiesDelay;
+  uint8_t enemiesKilled;
   // Tanks
   tank_t tank[6];
   // Map

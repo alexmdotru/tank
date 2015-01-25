@@ -11,6 +11,7 @@ void serverLoop(server_t *server);
 void spawnEnemy(server_t *server);
 void updateMap(map_t *map, tank_t *tank);
 int explosionThread(void *data);
+int tankExplosionThread(void *data);
 
 int main(int argc, char **argv) {
   // Check command line
@@ -71,6 +72,7 @@ void serverLoop(server_t *server) {
   }
   server->enemies = 0;
   server->enemiesDelay = 0;
+  server->enemiesKilled = 0;
 
   // Load map
   server->map = loadMap(server->level);
@@ -105,9 +107,7 @@ void serverLoop(server_t *server) {
         }
         sendTankStruct(&server->tank[i], server->cSocket[0]);
         sendTankStruct(&server->tank[i], server->cSocket[1]);
-        if(server->tank[i].winsTheGame) {
-          server->tank[i].winsTheGame = 0;
-        }
+        server->tank[i].destroyedBase = 0;
       }
 
       // Update players
@@ -123,6 +123,25 @@ void serverLoop(server_t *server) {
       for(i = 0; i < TANKS; i++) {
         updateMap(server->map, &server->tank[i]);
       }
+
+      // Recv destroy updates
+      for(i = 0; i < 2; i++) {
+        int8_t id;
+        recvDestrUpdate(&id, server->cSocket[i]);
+        if(id >= 0) {
+          fprintf(stderr, "Player %d killed enemy %d\n", i + 1, ++server->enemiesKilled);
+          server->tank[id].explodes = 1;
+          freeMapFromTank(id, server->map);
+          SDL_Thread *tankExplosionT;
+          tankExplosionT = SDL_CreateThread(tankExplosionThread, "tankExplosionT",
+          (void*)&server->tank[id]);
+        }
+      }
+
+      // Send enemies killed
+      for(i = 0; i < 2; i++) {
+        sendEnemiesKilled(&server->enemiesKilled, server->cSocket[i]);
+      }
     }
     else {
       acceptConnection(server);
@@ -137,6 +156,18 @@ int explosionThread(void *data) {
   SDL_Delay(150);
 
   tank->fire.explodes = 0;
+
+  return 0;
+}
+
+int tankExplosionThread(void *data) {
+  tank_t *tank = (tank_t*)data;
+
+  // Animation speed
+  SDL_Delay(300);
+
+  tank->explodes = 0;
+  tank->null = 1;
 
   return 0;
 }
