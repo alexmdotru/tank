@@ -3,12 +3,12 @@
 #define MAP_SIZE 26
 
 typedef enum {
-  TERRA,
-  BRICK,
-  STEEL,
-  GRASS,
-  WATER,
-  BASE,
+  TERRA = 1,
+  BRICK = 2,
+  STEEL = 3,
+  GRASS = 4,
+  WATER = 5,
+  BASE  = 6,
   TANK0 = 10,
   TANK1 = 11,
   TANK2 = 12,
