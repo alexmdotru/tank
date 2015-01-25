@@ -49,8 +49,12 @@ void loadResources(client_t *client) {
   graphics->au2 = loadLabel("АЛЛ РИГХТС РЕСЕРВЕД", 16, COLOR_WHITE, graphics->renderer);
 
   // Game over labels
-  graphics->victory = loadLabel("ПОБЕДА", 64, COLOR_RED, graphics->renderer);
+  graphics->victory = loadLabel("ПОБЕДА!", 64, COLOR_RED, graphics->renderer);
   graphics->defeat = loadLabel("ПОРАЖЕНИЕ", 52, COLOR_RED, graphics->renderer);
+
+  // Game result labels
+  graphics->killed1 = loadLabel("ВСЕ ВРАЖЕСКИЕ ТАНКИ", 16, COLOR_WHITE, graphics->renderer);
+  graphics->killed2 = loadLabel("У Н И Ч Т О Ж Е Н Ы", 16, COLOR_WHITE, graphics->renderer);
 
   // Load textures bank
   graphics->textures = pngToSurface("../../resources/textures.png");
@@ -91,6 +95,9 @@ void loadResources(client_t *client) {
   graphics->base[0] = loadTexture(graphics->textures, 304,  32, 16, 16, graphics->renderer);
   graphics->base[1] = loadTexture(graphics->textures, 320,  32, 16, 16, graphics->renderer);
 
+  // HUD
+  graphics->enemy = loadTexture(graphics->textures, 320, 192, 8, 8, graphics->renderer);
+
   // Animation threads
   SDL_Thread *waterAnimT;
   waterAnimT = SDL_CreateThread(waterAnimThread, "waterAnimT", (void*)graphics);
@@ -101,8 +108,9 @@ void loadResources(client_t *client) {
   SDL_Thread *explosionAnimT;
   explosionAnimT = SDL_CreateThread(explosionAnimThread, "explosionAnimT", (void*)client);
 
-  graphics->baseAnim = -1;
+  graphics->baseAnim  = 0;
   graphics->baseDelay = 0;
+  client->baseExplodes = 0;
 }
 
 void freeResources(graphics_t *graphics) {
@@ -122,9 +130,16 @@ SDL_Surface *pngToSurface(char *file) {
 
 texture_t *loadTexture(SDL_Surface *src, int x, int y, int szx, int szy, SDL_Renderer *renderer) {
   texture_t *texture;
-  SDL_Surface *dst = SDL_CreateRGBSurface(0, szx, szy, 32, 0, 0, 0, 0);
   texture = malloc(sizeof(texture_t));
   texture->tex = NULL;
+
+  Uint32 rmask, gmask, bmask, amask;
+  rmask = 0xff000000;
+  gmask = 0x00ff0000;
+  bmask = 0x0000ff00;
+  amask = 0x000000ff;
+
+  SDL_Surface *dst = SDL_CreateRGBSurface(0, szx, szy, 32, rmask, gmask, bmask, amask);
 
   SDL_Rect rect = { x, y, szx, szy };
   if(SDL_BlitSurface(src, &rect, dst, NULL) != 0) {
@@ -208,11 +223,15 @@ void renderOver(client_t *client) {
   SDL_RenderClear(graphics->renderer);
 
   // Render result
-  if(client->winner >= 0)
+  if(client->result == BASE_DESTROYED)
     renderTexture(graphics->defeat, 26, 128, 1, 1, 0.0, graphics->renderer);
   else
-    renderTexture(graphics->victory, 88, 64, 1, 1, 0.0, graphics->renderer);
+    renderTexture(graphics->victory, 40, 140, 1, 1, 0.0, graphics->renderer);
 
+  if(client->result == ENEMIES_KILLED) {
+    renderTexture(graphics->killed1, 104, 280, 1, 1, 0.0, graphics->renderer);
+    renderTexture(graphics->killed2, 104, 312, 1, 1, 0.0, graphics->renderer);
+  }
 
   // Update render
   SDL_RenderPresent(graphics->renderer);
@@ -226,12 +245,12 @@ void render(client_t *client) {
 
   // Fill background
   SDL_Rect background = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
-  SDL_SetRenderDrawColor(graphics->renderer, 128, 128, 128, SDL_ALPHA_OPAQUE);
+  SDL_SetRenderDrawColor(graphics->renderer,  99,  99,  99, SDL_ALPHA_OPAQUE);
   SDL_RenderFillRect(graphics->renderer, &background);
   SDL_SetRenderDrawColor(graphics->renderer,   0,   0,   0, SDL_ALPHA_OPAQUE);
 
   // Set viewport to map
-  graphics->mapView = (SDL_Rect) { 31, 31, 416, 416 };
+  graphics->mapView = (SDL_Rect) { 32, 32, 416, 416 };
   SDL_RenderSetViewport(graphics->renderer, &graphics->mapView);
 
   // Render map
@@ -334,22 +353,37 @@ void render(client_t *client) {
   }
 
   // Render base
-  if(client->base == 2) {
+  if(client->baseExplodes) {
+    if(graphics->baseAnim < 3)
+      renderTexture(graphics->explosion[graphics->baseAnim], BASE_X, BASE_Y, 2, 2, 0, graphics->renderer);
+    else
+      renderTexture(graphics->explosion[graphics->baseAnim], BASE_X - 16, BASE_Y - 16, 2, 2, 0, graphics->renderer);
+
     if(SDL_GetTicks() > graphics->baseDelay) {
       if(++graphics->baseAnim == 5) {
+        graphics->baseAnim = 0;
+        client->baseExplodes = 0;
         client->base = 1;
       }
       graphics->baseDelay = SDL_GetTicks() + 50;
     }
-
-    if(graphics->baseAnim < 5) {
-      if(graphics->baseAnim < 3)
-        renderTexture(graphics->explosion[graphics->baseAnim], BASE_X, BASE_Y, 2, 2, 0, graphics->renderer);
-      else
-        renderTexture(graphics->explosion[graphics->baseAnim], BASE_X - 16, BASE_Y - 16, 2, 2, 0, graphics->renderer);
-    }
   }
   else renderTexture(graphics->base[client->base], BASE_X, BASE_Y, 2, 2, 0, graphics->renderer);
+
+  // Render HUD
+  // Set viewport to HUD
+  graphics->hudView = (SDL_Rect) { 464, 48, 32, 320 };
+  SDL_RenderSetViewport(graphics->renderer, &graphics->hudView);
+
+  uint8_t enemiesRendered = 0;
+  for(y = 0; y < 320; y += 16) {
+    for(x = 0; x < 32; x += 16) {
+      if(enemiesRendered < ENEMIES - client->enemiesKilled) {
+        renderTexture(graphics->enemy, x, y, 2, 2, 0, graphics->renderer);
+        enemiesRendered++;
+      }
+    }
+  }
 
   // Restore viewport
   SDL_RenderSetViewport(graphics->renderer, NULL);
