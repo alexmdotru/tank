@@ -21,15 +21,8 @@ TCPsocket openTCPSocket(char *host, int port) {
 
 void sendTankStruct(tank_t *tank, TCPsocket socket) {
   // Block until request
-  uint8_t request = 1;
+  uint8_t request;
   SDLNet_TCP_Recv(socket, &request, 1);
-
-  int8_t null = 0;
-  if(tank->null) {
-    null = 1;
-  }
-  SDLNet_TCP_Send(socket, &null, 1);
-  if(null) return;
 
   SDLNet_TCP_Send(socket, &tank->driver, sizeof(driver_t));
   SDLNet_TCP_Send(socket, &tank->direction, sizeof(direction_t));
@@ -41,6 +34,7 @@ void sendTankStruct(tank_t *tank, TCPsocket socket) {
   SDLNet_TCP_Send(socket, &tank->isFiring, 1);
   SDLNet_TCP_Send(socket, &tank->null, 1);
   SDLNet_TCP_Send(socket, &tank->destrBlock, 2);
+  SDLNet_TCP_Send(socket, &tank->destrTank, 1);
   SDLNet_TCP_Send(socket, &tank->id, 2);
   SDLNet_TCP_Send(socket, &tank->destroyedBase, 1);
   SDLNet_TCP_Send(socket, &tank->fire.posX, 4);
@@ -56,14 +50,6 @@ void recvTankStruct(tank_t *tank, TCPsocket socket) {
   uint8_t request = 1;
   SDLNet_TCP_Send(socket, &request, 1);
 
-  int8_t null;
-  SDLNet_TCP_Recv(socket, &null, 1);
-  if(null) {
-    tank->null = 1;
-    return;
-  }
-
-  tank->null = 0;
   SDLNet_TCP_Recv(socket, &tank->driver, sizeof(driver_t));
   SDLNet_TCP_Recv(socket, &tank->direction, sizeof(direction_t));
   SDLNet_TCP_Recv(socket, &tank->posX, 4);
@@ -74,6 +60,7 @@ void recvTankStruct(tank_t *tank, TCPsocket socket) {
   SDLNet_TCP_Recv(socket, &tank->isFiring, 1);
   SDLNet_TCP_Recv(socket, &tank->null, 1);
   SDLNet_TCP_Recv(socket, &tank->destrBlock, 2);
+  SDLNet_TCP_Recv(socket, &tank->destrTank, 1);
   SDLNet_TCP_Recv(socket, &tank->id, 2);
   SDLNet_TCP_Recv(socket, &tank->destroyedBase, 1);
   SDLNet_TCP_Recv(socket, &tank->fire.posX, 4);
