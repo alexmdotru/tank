@@ -55,6 +55,9 @@ void loadResources(client_t *client) {
   // Game result labels
   graphics->killed1 = loadLabel("ВСЕ ВРАЖЕСКИЕ ТАНКИ", 16, COLOR_WHITE, graphics->renderer);
   graphics->killed2 = loadLabel("У Н И Ч Т О Ж Е Н Ы", 16, COLOR_WHITE, graphics->renderer);
+  graphics->killed3 = loadLabel("ВЫ  И  ВАШ  СОЮЗНИК", 16, COLOR_WHITE, graphics->renderer);
+  graphics->killed4 = loadLabel("В А  Ш А   Б А  З А", 16, COLOR_WHITE, graphics->renderer);
+  graphics->killed5 = loadLabel("У Н И Ч Т О Ж Е Н А", 16, COLOR_WHITE, graphics->renderer);
 
   // Load textures bank
   graphics->textures = pngToSurface("../../resources/textures.png");
@@ -82,7 +85,7 @@ void loadResources(client_t *client) {
   graphics->tank[2][1] = loadTexture(graphics->textures, 144,   0, 15, 16, graphics->renderer);
 
   // Load fire texture
-  graphics->fire = loadTexture(graphics->textures, 320, 100, 8, 8, graphics->renderer);
+  graphics->fire = loadTexture(graphics->textures, 321, 101, 8, 8, graphics->renderer);
 
   // Load explosion textures
   graphics->explosion[0] = loadTexture(graphics->textures, 256, 128, 16, 16, graphics->renderer);
@@ -223,14 +226,22 @@ void renderOver(client_t *client) {
   SDL_RenderClear(graphics->renderer);
 
   // Render result
-  if(client->result == BASE_DESTROYED)
-    renderTexture(graphics->defeat, 26, 128, 1, 1, 0.0, graphics->renderer);
+  if(client->result == BASE_DESTROYED || client->result == PLAYERS_KILLED)
+    renderTexture(graphics->defeat, 26, 140, 1, 1, 0.0, graphics->renderer);
   else
     renderTexture(graphics->victory, 40, 140, 1, 1, 0.0, graphics->renderer);
 
   if(client->result == ENEMIES_KILLED) {
     renderTexture(graphics->killed1, 104, 280, 1, 1, 0.0, graphics->renderer);
     renderTexture(graphics->killed2, 104, 312, 1, 1, 0.0, graphics->renderer);
+  }
+  else if(client->result == PLAYERS_KILLED) {
+    renderTexture(graphics->killed3, 104, 280, 1, 1, 0.0, graphics->renderer);
+    renderTexture(graphics->killed2, 104, 312, 1, 1, 0.0, graphics->renderer);
+  }
+  else if(client->result == BASE_DESTROYED) {
+    renderTexture(graphics->killed4, 104, 280, 1, 1, 0.0, graphics->renderer);
+    renderTexture(graphics->killed5, 104, 312, 1, 1, 0.0, graphics->renderer);
   }
 
   // Update render
@@ -288,12 +299,7 @@ void render(client_t *client) {
   }
 
   // Render tanks
-  for(k = 0; k < 2; k++) {
-    renderTexture(graphics->tank[k][graphics->tankAnim[k]], client->tank[k].posX+1,
-    client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
-  }
-
-  for(k = 2; k < TANKS; k++) {
+  for(k = 0; k < TANKS; k++) {
     if(!client->tank[k].null) {
       if(client->tank[k].explodes) {
         if(client->tank[k].explAnim < 3)
@@ -305,30 +311,50 @@ void render(client_t *client) {
 
         if(SDL_GetTicks() > client->tank[k].explDelay) {
           if(++client->tank[k].explAnim == 5) {
-            client->tank[k].explAnim = 0;
-            client->tank[k].explodes = 0;
+            client->tank[k].explAnim  = 0;
+            client->tank[k].explDelay = 0;
+            client->tank[k].explodes  = 0;
+            client->tank[k].null = 1;
           }
           client->tank[k].explDelay = SDL_GetTicks() + 60;
         }
       }
-      else
-        renderTexture(graphics->tank[2][graphics->tankAnim[k]], client->tank[k].posX+1,
-        client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
+      else {
+        if(client->tank[k].driver == PLAYER) {
+          renderTexture(graphics->tank[k][graphics->tankAnim[k]], client->tank[k].posX+1,
+          client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
+        }
+        else {
+          renderTexture(graphics->tank[2][graphics->tankAnim[k]], client->tank[k].posX+1,
+          client->tank[k].posY, 2, 2, client->tank[k].direction, graphics->renderer);
+        }
+      }
     }
   }
 
   // Render fire
   for(k = 0; k < TANKS; k++) {
     if(!client->tank[k].null) {
+      uint32_t x, y, direction;
+      x = client->tank[k].fire.posX;
+      y = client->tank[k].fire.posY;
+      direction = client->tank[k].fire.direction;
+
       if(client->tank[k].isFiring) {
-        renderTexture(graphics->fire, client->tank[k].fire.posX + 7, client->tank[k].fire.posY,
-        2, 2, client->tank[k].fire.direction, graphics->renderer);
+        switch(direction) {
+          case UP:
+          case DOWN:
+          x += 8;
+          break;
+
+          case LEFT:
+          case RIGHT:
+          y += 8;
+          break;
+        }
+        renderTexture(graphics->fire, x, y, 2, 2, client->tank[k].fire.direction, graphics->renderer);
       }
       else if(client->tank[k].fire.explodes) {
-        uint32_t x, y, direction;
-        x = client->tank[k].fire.posX;
-        y = client->tank[k].fire.posY;
-        direction = client->tank[k].fire.direction;
         switch(direction) {
           case UP:
           y -= 16;
@@ -346,8 +372,8 @@ void render(client_t *client) {
           x += 16;
           break;
         }
-        renderTexture(graphics->explosion[client->tank[k].fire.explosionAnim],
-        x, y, 2, 2, direction, graphics->renderer);
+        renderTexture(graphics->explosion[client->tank[k].fire.explosionAnim], x, y, 2, 2, direction,
+        graphics->renderer);
       }
     }
   }
