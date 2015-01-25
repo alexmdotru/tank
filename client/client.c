@@ -106,13 +106,6 @@ void updateOver(client_t *client) {
 }
 
 void update(client_t *client) {
-  // Process player input
-  processInput(client);
-  // Update coordinates and fire
-  updatePlayerTank(client);
-  moveTank(&client->tank[client->myPlayerID], client->map);
-  updateFire(&client->tank[client->myPlayerID], client->map);
-
   uint8_t i;
   // Update enemies
   for(i = 2; i < TANKS; i++) {
@@ -131,23 +124,41 @@ void update(client_t *client) {
   for(i = 0; i < TANKS; i++) {
     if(!client->tank[i].null) {
       updateMap(client->map, &client->tank[i]);
-
-      if(client->tank[i].winsTheGame) {
-        switch(client->tank[i].driver) {
-          case PLAYER:
-          client->base = 2;
-          break;
-
-          case ENEMY:
-          client->base = 2;
-          break;
-        }
-        client->winner = i;
-        client->tank[i].winsTheGame = 0;
+      if(client->tank[i].destroyedBase) {
+        client->result = BASE_DESTROYED;
+        client->baseExplodes = 1;
+        client->tank[i].destroyedBase = 0;
         SDL_Thread *gameOverT;
         gameOverT = SDL_CreateThread(gameOverThread, "gameOverT", (void*)client);
       }
     }
+    else {
+      freeMapFromTank(i, client->map);
+    }
+  }
+
+  // Process player input
+  processInput(client);
+  // Update coordinates and fire
+  updatePlayerTank(client);
+  moveTank(&client->tank[client->myPlayerID], client->map);
+  updateFire(&client->tank[client->myPlayerID], client->map);
+
+  // Check if tank explodes
+  if(client->tank[client->myPlayerID].destrTank >= 2) {
+    client->tank[client->tank[client->myPlayerID].destrTank].explodes = 1;
+  }
+
+  // Send destroy update
+  sendDestrUpdate(&client->tank[client->myPlayerID].destrTank, client->socket);
+  client->tank[client->myPlayerID].destrTank = -1;
+
+  // Recv killed enemies
+  recvEnemiesKilled(&client->enemiesKilled, client->socket);
+  if(client->enemiesKilled == ENEMIES) {
+    client->result = ENEMIES_KILLED;
+    SDL_Thread *gameOverT;
+    gameOverT = SDL_CreateThread(gameOverThread, "gameOverT", (void*)client);
   }
 }
 
@@ -220,8 +231,8 @@ int prepareClientThread(void *data) {
   else client->hisPlayerID = 0;
 
   client->tanks = 2;
-  client->tank[0] = (tank_t) { PLAYER, UP, 128, 384, 1, 0, 0, 0, 0, 0, -1, 0, 0 };
-  client->tank[1] = (tank_t) { PLAYER, UP, 256, 384, 1, 0, 0, 0, 0, 0, -1, 1, 0 };
+  client->tank[0] = (tank_t) { PLAYER, UP, 128, 384, 1, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, 0, 0 };
+  client->tank[1] = (tank_t) { PLAYER, UP, 256, 384, 1, 0, 0, 0, 0, 0, -1, -1, 1, 0, 0, 0, 0 };
   for(i = 0; i < 2; i++) {
     updateTankOnMap(&client->tank[i], client->map);
     updateTanksOnMap(&client->tank[i], client->map);
@@ -230,6 +241,8 @@ int prepareClientThread(void *data) {
   for(i = 2; i < TANKS; i++) {
     client->tank[i].null = 1;
     client->tank[i].destrBlock = -1;
+    client->tank[i].explAnim = 0;
+    client->tank[i].explDelay = 0;
   }
 
   return 0;
