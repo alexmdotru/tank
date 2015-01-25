@@ -27,7 +27,7 @@ int gameOverThread(void *data);
 int main(int argc, char **argv) {
   // Check command line
   if(argc != 3) {
-    fprintf(stderr, "usage:\t%s host port", argv[0]);
+    fprintf(stderr, "usage:\ttank host port\n");
     exit(EXIT_FAILURE);
   }
 
@@ -111,6 +111,11 @@ void update(client_t *client) {
   for(i = 2; i < TANKS; i++) {
     recvTankStruct(&client->tank[i], client->socket);
     updateTanksOnMap(&client->tank[i], client->map);
+    if(!client->tank[i].null) {
+      if(client->tank[i].destrTank >= 0) {
+        client->tank[client->tank[i].destrTank].explodes = 1;
+      }
+    }
   }
 
   // Update me
@@ -157,6 +162,13 @@ void update(client_t *client) {
   recvEnemiesKilled(&client->enemiesKilled, client->socket);
   if(client->enemiesKilled == ENEMIES) {
     client->result = ENEMIES_KILLED;
+    SDL_Thread *gameOverT;
+    gameOverT = SDL_CreateThread(gameOverThread, "gameOverT", (void*)client);
+  }
+
+  // Check if the game is over for us
+  if(client->tank[client->myPlayerID].null && client->tank[client->hisPlayerID].null) {
+    client->result = PLAYERS_KILLED;
     SDL_Thread *gameOverT;
     gameOverT = SDL_CreateThread(gameOverThread, "gameOverT", (void*)client);
   }
@@ -241,7 +253,8 @@ int prepareClientThread(void *data) {
   for(i = 2; i < TANKS; i++) {
     client->tank[i].null = 1;
     client->tank[i].destrBlock = -1;
-    client->tank[i].explAnim = 0;
+    client->tank[i].explodes  = 0;
+    client->tank[i].explAnim  = 0;
     client->tank[i].explDelay = 0;
   }
 
