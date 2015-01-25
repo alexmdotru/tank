@@ -30,6 +30,8 @@ typedef struct {
   texture_t *defeat;
   texture_t *au1;
   texture_t *au2;
+  texture_t *killed1;
+  texture_t *killed2;
   // Brick
   texture_t *brick;
   // Steel
@@ -40,6 +42,8 @@ typedef struct {
   // Tanks
   texture_t *tank[3][2];
   uint8_t tankAnim[6];
+  // HUD
+  texture_t *enemy;
   // Fire
   texture_t *fire;
   // Explosion
@@ -50,6 +54,8 @@ typedef struct {
   texture_t *base[2];
   // Map viewport
   SDL_Rect mapView;
+  // HUD viewport
+  SDL_Rect hudView;
 } graphics_t;
 
 void loadFrame(graphics_t *graphics);
